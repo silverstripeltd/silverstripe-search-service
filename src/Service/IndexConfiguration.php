@@ -4,6 +4,7 @@
 namespace SilverStripe\SearchService\Service;
 
 use SilverStripe\Core\Config\Configurable;
+use SilverStripe\Core\Environment;
 use SilverStripe\Core\Extensible;
 use SilverStripe\Core\Injector\Injectable;
 use SilverStripe\ORM\DataObject;
@@ -170,6 +171,10 @@ class IndexConfiguration
     public function getIndexes(): array
     {
         $indexes = $this->config()->get('indexes');
+
+        array_walk($indexes, function (array &$configuration) {
+            $configuration = $this->environmentVariableToValue($configuration);
+        });
         if ($this->onlyIndexes && !empty($this->onlyIndexes)) {
             foreach ($indexes as $index => $configuration) {
                 if (!in_array($index, $this->onlyIndexes)) {
@@ -357,5 +362,26 @@ class IndexConfiguration
         }
 
         return $fields;
+    }
+
+    /**
+     * For every configuration item if value is environment variable then convert it to its value
+     */
+    protected function environmentVariableToValue(array $configuration): array
+    {
+        foreach ($configuration as $name => $value) {
+            if (!is_string($value)) {
+                continue;
+            }
+
+            $environmentValue = Environment::getEnv($value);
+            if (!$environmentValue) {
+                continue;
+            }
+
+            $configuration[$name] = $environmentValue;
+        }
+
+        return $configuration;
     }
 }
