@@ -27,3 +27,11 @@ Only:
 SilverStripe\CMS\Model\SiteTree:
   extensions:
     - SilverStripe\SearchService\Extensions\SearchServiceExtension
+---
+Name: 'silverstripe-search-service-asset-admin'
+Only:
+  moduleexists: 'silverstripe/asset-admin'
+---
+SilverStripe\AssetAdmin\Forms\FileFormFactory:
+  extensions:
+    - SilverStripe\SearchService\Extensions\FileFormFactoryExtension
