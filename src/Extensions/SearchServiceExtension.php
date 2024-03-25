@@ -116,6 +116,21 @@ class SearchServiceExtension extends DataExtension
     }
 
     /**
+     * When saving an un-versioned DataObject, push this data to Indexer.
+     * The data which is sent to search is the rendered template from the front end
+     *
+     * @throws Exception
+     */
+    public function onAfterWrite(): void
+    {
+        if ($this->owner->hasExtension(Versioned::class)) {
+            return;
+        }
+
+        $this->owner->addToIndexes();
+    }
+
+    /**
      * When unpublishing this item, remove from search
      */
     public function onAfterUnpublish(): void

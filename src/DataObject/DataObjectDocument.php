@@ -125,18 +125,22 @@ class DataObjectDocument implements
 
         // If an anonymous user can't view it
         $isPublic = Member::actAs(null, static function () use ($dataObject) {
-            // Need to make sure that the version of the DataObject that we access is always the LIVE version
-            return Versioned::withVersionedMode(static function () use ($dataObject): bool {
-                Versioned::set_stage(Versioned::LIVE);
+            if ($dataObject->hasExtension(Versioned::class)) {
+                // Need to make sure that the version of the DataObject that we access is always the LIVE version
+                return Versioned::withVersionedMode(static function () use ($dataObject): bool {
+                    Versioned::set_stage(Versioned::LIVE);
 
-                $liveDataObject = DataObject::get($dataObject->ClassName)->byID($dataObject->ID);
+                    $liveDataObject = DataObject::get($dataObject->ClassName)->byID($dataObject->ID);
 
-                if (!$liveDataObject || !$liveDataObject->exists()) {
-                    return false;
-                }
+                    if (!$liveDataObject || !$liveDataObject->exists()) {
+                        return false;
+                    }
 
-                return $liveDataObject->canView();
-            });
+                    return $liveDataObject->canView();
+                });
+            }
+            
+            return $dataObject->canView();
         });
 
         if (!$isPublic) {
