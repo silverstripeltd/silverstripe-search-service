@@ -13,7 +13,8 @@ use SilverStripe\Forms\FieldList;
  */
 class FileFormFactoryExtension extends Extension
 {
-    public function updateFormFields(FieldList $fields, $controller, $formName, $context): void
+
+    public function updateFormFields(FieldList $fields): void
     {
 
         $indexedField = DatetimeField::create(
@@ -28,7 +29,6 @@ class FileFormFactoryExtension extends Extension
 
         $fields->addFieldToTab('Editor.Details', $indexedField);
         $fields->addFieldToTab('Editor.Details', $showInSearchField);
-
     }
-}
 
+}

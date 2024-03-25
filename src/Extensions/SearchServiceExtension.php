@@ -5,6 +5,7 @@ namespace SilverStripe\SearchService\Extensions;
 use Exception;
 use SilverStripe\Core\Config\Configurable;
 use SilverStripe\Core\Injector\Injectable;
+use SilverStripe\Forms\CheckboxField;
 use SilverStripe\Forms\FieldList;
 use SilverStripe\Forms\ReadonlyField;
 use SilverStripe\ORM\DataExtension;
@@ -37,6 +38,11 @@ class SearchServiceExtension extends DataExtension
 
     private static array $db = [
         'SearchIndexed' => 'Datetime',
+        'ShowInSearch' => 'Boolean(1)',
+    ];
+
+    private static array $defaults = [
+        'ShowInSearch' => '1',
     ];
 
     private bool $hasConfigured = false;
@@ -59,12 +65,39 @@ class SearchServiceExtension extends DataExtension
             return;
         }
 
-        $field = ReadonlyField::create('SearchIndexed', _t(self::class.'.LastIndexed', 'Last indexed in search'));
+        $indexedField = ReadonlyField::create(
+            'SearchIndexed',
+            _t(self::class . '.LastIndexed', 'Last indexed in search')
+        );
+
+        $showInSearchField = CheckboxField::create(
+            'ShowInSearch',
+            _t(self::class . '.ShowInSearch', 'Show in search')
+        );
+
+        if (!$this->getOwner()->hasExtension(Versioned::class)) {
+            $showInSearchField->setDescription(
+                _t(
+                    self::class . 'ShowInSearch_Description',
+                    'This setting will apply to <strong>all</strong> published and unpublished versions of this record.'
+                )
+            );
+        }
 
         if ($fields->hasTabSet()) {
-            $fields->addFieldToTab('Root.Main', $field);
+            $fields->addFieldToTab('Root.Main', $indexedField);
+
+            // In the case of SiteTree objects, we want this checkbox in the settings tab alongside other access
+            // restriction settings. If there isn't already a Settings tab, it would be poor UI to add it for one
+            // specific field.
+            if ($fields->findTab('Root.Settings')) {
+                $fields->addFieldToTab('Root.Settings', $showInSearchField);
+            } else {
+                $fields->addFieldToTab('Root.Main', $showInSearchField);
+            }
         } else {
-            $fields->push($field);
+            $fields->push($indexedField);
+            $fields->push($showInSearchField);
         }
     }
 
