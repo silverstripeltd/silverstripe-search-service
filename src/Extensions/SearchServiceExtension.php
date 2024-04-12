@@ -112,7 +112,9 @@ class SearchServiceExtension extends DataExtension
      */
     public function onAfterPublish(): void
     {
-        $this->owner->addToIndexes();
+        $this->owner->ShowInSearch
+            ? $this->owner->addToIndexes()
+            : $this->owner->removeFromIndexes();
     }
 
     /**
