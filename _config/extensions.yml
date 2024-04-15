@@ -19,6 +19,9 @@ SilverStripe\ORM\FieldType\DBHTMLVarchar:
 Symbiote\QueuedJobs\Controllers\QueuedJobsAdmin:
   extensions:
     - SilverStripe\SearchService\Extensions\QueuedJobsAdminExtension
+SilverStripe\AssetAdmin\Forms\FileFormFactory:
+  extensions:
+    - SilverStripe\SearchService\Extensions\FileFormFactoryExtension
 ---
 Name: 'silverstripe-search-service-cms'
 Only:
