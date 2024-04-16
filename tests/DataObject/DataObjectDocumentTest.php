@@ -118,6 +118,17 @@ class DataObjectDocumentTest extends SearchServiceTest
         $this->assertFalse($docTwo->shouldIndex());
         // Document three should NOT be indexable (canView(): false)
         $this->assertFalse($docThree->shouldIndex());
+
+        // Document should be NOT indexable (as it's value is changed to ShowInSearch: 0)
+        $dataObject = $this->objFromFixture(DataObjectFakeVersioned::class, 'one');
+        $dataObject->ShowInSearch = false;
+        $dataObject->write();
+        $this->assertFalse($docOne->shouldIndex());
+
+        // Document should be indexable (as it's value is now changed to ShowInSearch: 1)
+        $dataObject->ShowInSearch = true;
+        $dataObject->write();
+        $this->assertTrue($docOne->shouldIndex());
     }
 
     public function testShouldIndexChild(): void
