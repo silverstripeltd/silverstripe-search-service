@@ -5,6 +5,7 @@ namespace SilverStripe\SearchService\Extensions;
 use Exception;
 use SilverStripe\Core\Config\Configurable;
 use SilverStripe\Core\Injector\Injectable;
+use SilverStripe\Forms\CheckboxField;
 use SilverStripe\Forms\FieldList;
 use SilverStripe\Forms\ReadonlyField;
 use SilverStripe\ORM\DataExtension;
@@ -36,6 +37,7 @@ class SearchServiceExtension extends DataExtension
     use BatchProcessorAware;
 
     private static array $db = [
+        'ShowInSearch' => 'Boolean',
         'SearchIndexed' => 'Datetime',
     ];
 
@@ -59,12 +61,15 @@ class SearchServiceExtension extends DataExtension
             return;
         }
 
-        $field = ReadonlyField::create('SearchIndexed', _t(self::class.'.LastIndexed', 'Last indexed in search'));
+        $showInSearchField = CheckboxField::create("ShowInSearch", _t(self::class . '.ShowInSearch', 'Show in search?'));
+        $searchIndexedField = ReadonlyField::create('SearchIndexed', _t(self::class . '.LastIndexed', 'Last indexed in search'));
 
         if ($fields->hasTabSet()) {
-            $fields->addFieldToTab('Root.Main', $field);
+            $fields->addFieldToTab('Root.Main', $showInSearchField);
+            $fields->addFieldToTab('Root.Main', $searchIndexedField);
         } else {
-            $fields->push($field);
+            $fields->push($showInSearchField);
+            $fields->push($searchIndexedField);
         }
     }
 
