@@ -11,16 +11,20 @@ use SilverStripe\SearchService\Exception\IndexConfigurationException;
 use SilverStripe\SearchService\Interfaces\DocumentAddHandler;
 use SilverStripe\SearchService\Interfaces\DocumentRemoveHandler;
 use SilverStripe\SearchService\Schema\Field;
+use SilverStripe\SearchService\Service\Indexer;
 use SilverStripe\SearchService\Tests\Fake\DataObjectFake;
 use SilverStripe\SearchService\Tests\Fake\DataObjectFakePrivate;
 use SilverStripe\SearchService\Tests\Fake\DataObjectFakeVersioned;
 use SilverStripe\SearchService\Tests\Fake\DataObjectSubclassFake;
 use SilverStripe\SearchService\Tests\Fake\ImageFake;
 use SilverStripe\SearchService\Tests\Fake\PageFake;
+use SilverStripe\SearchService\Tests\Fake\ServiceFake;
 use SilverStripe\SearchService\Tests\Fake\TagFake;
 use SilverStripe\SearchService\Tests\SearchServiceTest;
 use SilverStripe\Security\Member;
 use SilverStripe\Subsites\Model\Subsite;
+use SilverStripe\Versioned\ReadingMode;
+use SilverStripe\Versioned\Versioned;
 
 class DataObjectDocumentTest extends SearchServiceTest
 {
@@ -623,19 +627,56 @@ class DataObjectDocumentTest extends SearchServiceTest
         $this->assertEquals($fake, $doc->getDataObject());
     }
 
-    public function testEvents(): void
+    public function testMarkIndexedOnEvents(): void
     {
+        $dataObject = $this->objFromFixture(DataObjectFakeVersioned::class, 'one');
         $mock = $this->getMockBuilder(DataObjectDocument::class)
-            ->onlyMethods(['markIndexed'])
+            ->onlyMethods(['markIndexed', 'getDataObject'])
             ->disableOriginalConstructor()
             ->getMock();
         $mock->expects($this->exactly(2))
             ->method('markIndexed');
 
-        $mock->onAddToSearchIndexes(DocumentAddHandler::BEFORE_ADD);
+        $mock->method('getDataObject')
+            ->willReturn($dataObject);
+
         $mock->onAddToSearchIndexes(DocumentAddHandler::AFTER_ADD);
+        // currenlty BEFORE_REMOVE is a noop
         $mock->onRemoveFromSearchIndexes(DocumentRemoveHandler::BEFORE_REMOVE);
         $mock->onRemoveFromSearchIndexes(DocumentRemoveHandler::AFTER_REMOVE);
+    }
+
+    public function testOnAddToSearchIndexes(): void
+    {
+        Versioned::withVersionedMode(function (): void {
+            // set DRAFT to match state of queue runners which generally
+            // run through DevelopmentAdmin controller
+            Versioned::set_stage(Versioned::DRAFT);
+
+            $dataObject = $this->objFromFixture(DataObjectFakeVersioned::class, 'one');
+            $dataObject->publishRecursive();
+            $document = DataObjectDocument::create($dataObject);
+
+            $queryParams = $document->getDataObject()->getSourceQueryParams();
+            $readingMode = ReadingMode::fromDataQueryParams($queryParams);
+
+            $this->assertEquals('Stage.' . Versioned::DRAFT, $readingMode);
+
+            $document->onAddToSearchIndexes(DocumentAddHandler::BEFORE_ADD);
+
+            $queryParams = $document->getDataObject()->getSourceQueryParams();
+            $readingMode = ReadingMode::fromDataQueryParams($queryParams);
+
+            $this->assertEquals('Stage.' . Versioned::LIVE, $readingMode);
+
+            $dataObject->doArchive();
+
+            $this->expectExceptionMessage(
+                sprintf('Only published DataObjects may be added to the index')
+            );
+
+            $document->onAddToSearchIndexes(DocumentAddHandler::BEFORE_ADD);
+        });
     }
 
     public function testDeletedDataObject(): void
@@ -658,6 +699,63 @@ class DataObjectDocumentTest extends SearchServiceTest
         );
 
         unserialize(serialize($doc));
+    }
+
+    public function testIndexDataObjectDocument(): void
+    {
+        $config = $this->mockConfig();
+        $config->set('getSearchableClasses', [
+            PageFake::class,
+        ]);
+        $config->set('getFieldsForClass', [
+            PageFake::class => [
+                new Field('title'),
+                new Field('page_link', 'Link'),
+            ],
+        ]);
+
+        Versioned::withVersionedMode(function () use ($config): void {
+            // Reading mode as if run by job - development Admin sets Draft reading mode
+            // usually via /dev/tasks/ProcessJobQueueTask
+            // @see SilverStripe\Dev\DevelopmentAdmin
+            Versioned::set_stage(Versioned::DRAFT);
+
+            $dataObject = PageFake::create();
+            $dataObject->Title = 'Draft';
+            $dataObject->write();
+
+            $doc = DataObjectDocument::create($dataObject);
+
+            $config->set(
+                'getIndexesForDocument',
+                [
+                    $doc->getIdentifier() => [
+                        'index' => 'data',
+                    ],
+                ]
+            );
+
+            $indexer = new Indexer([$doc]);
+            $indexer->setIndexService($service = new ServiceFake());
+            $indexer->setBatchSize(1);
+            $indexer->processNode();
+
+            $this->assertCount(0, $service->documents, 'Draft documents should not be indexed');
+
+            $dataObject->Title = 'Published';
+            $dataObject->write();
+            $published = $dataObject->publishRecursive();
+            $this->assertTrue($published);
+            $dataObject->flushCache();
+            $doc = DataObjectDocument::create($dataObject);
+
+            $indexer = new Indexer([$doc]);
+            $indexer->setIndexService($service = new ServiceFake());
+            $indexer->setBatchSize(1);
+            $indexer->processNode();
+
+            $this->assertCount(1, $service->documents, 'Published documents should be indexed');
+        });
     }
 
 }
