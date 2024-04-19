@@ -79,6 +79,16 @@ class DataObjectDocument implements
     private ?DataObject $dataObject = null;
 
     /**
+     * This is the identifier (id) used in the search engine and based on the class and object id.
+     */
+    private string $identifier = '';
+
+    /**
+     * This is the classname of the data object, populated for the purpose of handling un-versioned deletions
+     */
+    private string $className = '';
+
+    /**
      * @var PageCrawler|null
      */
     private ?PageCrawler $pageCrawler = null;
@@ -94,10 +104,19 @@ class DataObjectDocument implements
     public function __construct(DataObject $dataObject)
     {
         $this->setDataObject($dataObject);
+
+        // whilst we have the data object get the identifier and classname and store in case they are needed
+        // (for example, if the data object is being deleted)
+        $this->identifier = $this->getIdentifier();
+        $this->className = $this->getSourceClass();
     }
 
     public function getIdentifier(): string
     {
+        if ($this->identifier) {
+            return $this->identifier;
+        }
+
         $type = str_replace('\\', '_', $this->getDataObject()->baseClass());
         $id = $this->getDataObject()->ID;
 
@@ -109,7 +128,7 @@ class DataObjectDocument implements
      */
     public function getSourceClass(): string
     {
-        return $this->getDataObject()->ClassName;
+        return $this->className ?? $this->getDataObject()->ClassName;
     }
 
     public function setShouldFallbackToLatestVersion(bool $fallback = true): self
@@ -467,9 +486,9 @@ class DataObjectDocument implements
     }
 
     /**
-     * @return DataObject&SearchServiceExtension|Versioned
+     * @return DataObject&SearchServiceExtension|Versioned|null
      */
-    public function getDataObject(): DataObject
+    public function getDataObject(): ?DataObject
     {
         return $this->dataObject;
     }
@@ -596,16 +615,39 @@ class DataObjectDocument implements
 
     public function __serialize(): array
     {
+        // Check for data object, if null then just return an identifier
+        // and className.
+        $dataObject = $this->getDataObject();
+
+        if (!$dataObject) {
+            return [
+                'identifier' => $this->identifier,
+                'className' => $this->className,
+            ];
+        }
+
         return [
             'className' => $this->getDataObject()->baseClass(),
             'id' => $this->getDataObject()->ID ?: $this->getDataObject()->OldID,
             'fallback' => $this->shouldFallbackToLatestVersion,
+            'identifier' => $this->getIdentifier(),
         ];
     }
 
     public function __unserialize(array $data): void
     {
         $dataObject = DataObject::get_by_id($data['className'], $data['id']);
+
+        // If the data object no longer exists, then we can pass back the identifier
+        // and class name - for example, when handling the deletion of un-versioned data objects
+        if (!$dataObject) {
+            $this->identifier = $data['identifier'];
+            $this->className = $data['className'];
+
+            $this->setDependencies();
+
+            return;
+        }
 
         if (!$dataObject && DataObject::has_extension($data['className'], Versioned::class) && $data['fallback']) {
             // get the latest version - usually this is an object that has been deleted
@@ -620,7 +662,11 @@ class DataObjectDocument implements
         }
 
         $this->setDataObject($dataObject);
+        $this->setDependencies();
+    }
 
+    public function setDependencies(): void
+    {
         foreach (static::config()->get('dependencies') as $name => $service) {
             $method = 'set' . $name;
             $this->$method(Injector::inst()->get($service));
