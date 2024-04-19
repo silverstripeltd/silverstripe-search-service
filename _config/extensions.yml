@@ -21,7 +21,7 @@ Symbiote\QueuedJobs\Controllers\QueuedJobsAdmin:
     - SilverStripe\SearchService\Extensions\QueuedJobsAdminExtension
 SilverStripe\AssetAdmin\Forms\FileFormFactory:
   extensions:
-    - SilverStripe\SearchService\Extensions\FileFormFactoryExtension
+    - SilverStripe\SearchService\Extensions\SearchFormFactoryExtension
 ---
 Name: 'silverstripe-search-service-cms'
 Only:

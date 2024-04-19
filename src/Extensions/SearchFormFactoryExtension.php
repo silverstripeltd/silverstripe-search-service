@@ -10,7 +10,7 @@ use SilverStripe\Forms\DatetimeField;
 use SilverStripe\Forms\Form;
 use SilverStripe\Forms\FormFactory;
 
-class FileFormFactoryExtension extends Extension
+class SearchFormFactoryExtension extends Extension
 {
 
     public function updateForm(
@@ -19,7 +19,7 @@ class FileFormFactoryExtension extends Extension
         string $name = FormFactory::DEFAULT_NAME,
         array $context = []
     ): void {
-        $fields = $form->Fields()->fieldByName('Editor.Details');
+        $fields = $form->Fields()->findOrMakeTab('Editor.Details');
         $file = $context['Record'] ?? null;
 
         if (!$fields || !$file || $file instanceof Image) {

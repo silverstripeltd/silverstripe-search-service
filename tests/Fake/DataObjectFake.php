@@ -19,7 +19,6 @@ class DataObjectFake extends DataObject implements TestOnly
 
     private static array $db = [
         'Title' => 'Varchar',
-        'ShowInSearch' => 'Boolean',
         'Sort' => 'Int',
     ];
 

@@ -41,6 +41,10 @@ class SearchServiceExtension extends DataExtension
         'SearchIndexed' => 'Datetime',
     ];
 
+    private static $defaults = [
+        'ShowInSearch' => true,
+    ];
+
     private bool $hasConfigured = false;
 
     public function __construct(

@@ -5,6 +5,7 @@ namespace SilverStripe\SearchService\Tests\Fake;
 use SilverStripe\Dev\TestOnly;
 use SilverStripe\ORM\DataObject;
 use SilverStripe\SearchService\Extensions\SearchServiceExtension;
+use SilverStripe\SearchService\Interfaces\DocumentInterface;
 use SilverStripe\Versioned\Versioned;
 
 /**
@@ -13,7 +14,7 @@ use SilverStripe\Versioned\Versioned;
  * @mixin SearchServiceExtension
  * @mixin Versioned
  */
-class DataObjectFakeVersioned extends DataObject implements TestOnly
+class DataObjectFakeVersioned extends DataObject implements TestOnly, DocumentInterface
 {
 
     private static string $table_name = 'DataObjectFakeVersioned';
@@ -25,12 +26,38 @@ class DataObjectFakeVersioned extends DataObject implements TestOnly
 
     private static array $db = [
         'Title' => 'Varchar',
-        'ShowInSearch' => 'Boolean',
     ];
 
     public function canView(mixed $member = null): bool
     {
         return true;
+    }
+
+    public function getIdentifier(): string
+    {
+        return (string) $this->ID;
+    }
+
+    public function shouldIndex(): bool
+    {
+        return (bool) $this->ShowInSearch;
+    }
+
+    public function markIndexed(): void
+    {
+        $this->ShowInSearch = 1;
+    }
+
+    public function toArray(): array
+    {
+        return [
+            'Title' => $this->Title,
+        ];
+    }
+
+    public function getSourceClass(): string
+    {
+        return static::class;
     }
 
 }
