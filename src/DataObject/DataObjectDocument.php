@@ -404,7 +404,16 @@ class DataObjectDocument implements
             return is_subclass_of($class, DataObject::class);
         });
         $ownedDataObject = $this->getDataObject();
+
         $docs = [];
+
+        // make sure we have a data object
+        // if not (it might have been deleted), then return empty dependency
+        // documents with the assumption that if there are any dependencies
+        // they will be handled separately
+        if (!$ownedDataObject) {
+            return $docs;
+        }
 
         foreach ($dataObjectClasses as $class) {
             // Start with a singleton to look at the model first, then get real records if needed
