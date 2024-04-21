@@ -647,6 +647,14 @@ class DataObjectDocument implements
     {
         $dataObject = DataObject::get_by_id($data['className'], $data['id']);
 
+        if (!$dataObject && DataObject::has_extension($data['className'], Versioned::class) && $data['fallback']) {
+            // get the latest version - usually this is an object that has been deleted
+            $dataObject = Versioned::get_latest_version(
+                $data['className'],
+                $data['id']
+            );
+        }
+
         // If the data object no longer exists, then we can pass back the identifier
         // and class name - for example, when handling the deletion of un-versioned data objects
         if (!$dataObject) {
@@ -656,18 +664,6 @@ class DataObjectDocument implements
             $this->setDependencies();
 
             return;
-        }
-
-        if (!$dataObject && DataObject::has_extension($data['className'], Versioned::class) && $data['fallback']) {
-            // get the latest version - usually this is an object that has been deleted
-            $dataObject = Versioned::get_latest_version(
-                $data['className'],
-                $data['id']
-            );
-        }
-
-        if (!$dataObject) {
-            throw new Exception(sprintf('DataObject %s : %s does not exist', $data['className'], $data['id']));
         }
 
         $this->setDataObject($dataObject);
