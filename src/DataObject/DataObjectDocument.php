@@ -81,12 +81,12 @@ class DataObjectDocument implements
     /**
      * This is the identifier (id) used in the search engine and based on the class and object id.
      */
-    private string $identifier = '';
+    private ?string $identifier = null;
 
     /**
      * This is the classname of the data object, populated for the purpose of handling un-versioned deletions
      */
-    private string $className = '';
+    private ?string $className = null;
 
     /**
      * @var PageCrawler|null
