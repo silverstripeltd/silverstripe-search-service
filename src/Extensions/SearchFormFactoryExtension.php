@@ -2,8 +2,8 @@
 
 namespace SilverStripe\SearchService\Extensions;
 
-use SilverStripe\Assets\Image;
 use SilverStripe\Control\RequestHandler;
+use SilverStripe\Core\Config\Config;
 use SilverStripe\Core\Extension;
 use SilverStripe\Forms\CheckboxField;
 use SilverStripe\Forms\DatetimeField;
@@ -22,7 +22,14 @@ class SearchFormFactoryExtension extends Extension
         $fields = $form->Fields()->findOrMakeTab('Editor.Details');
         $file = $context['Record'] ?? null;
 
-        if (!$fields || !$file || $file instanceof Image) {
+        $excludedClasses = Config::inst()->get(self::class, 'exclude_classes') ?? [];
+        $excludeFileTypes = Config::inst()->get(self::class, 'exclude_file_extensions') ?? [];
+
+        if (!$fields
+            || !$file
+            || in_array($file->ClassName, $excludedClasses)
+            || in_array($file->getExtension(), $excludeFileTypes)
+        ) {
             return;
         }
 

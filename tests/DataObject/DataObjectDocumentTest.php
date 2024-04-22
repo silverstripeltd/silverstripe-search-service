@@ -760,15 +760,29 @@ class DataObjectDocumentTest extends SearchServiceTest
 
     public function testIndexDataObjectDocumentShowInSearch(): void
     {
-        // Document should be NOT indexable (as its value is changed to ShowInSearch: 0)
-        $dataObject = $this->objFromFixture(DataObjectFakeVersioned::class, 'one');
-        $dataObject->ShowInSearch = false;
-        $dataObject->write();
-        $this->assertFalse($dataObject->shouldIndex());
+        $dataObject = $this->objFromFixture(DataObjectFakeVersioned::class, 'two');
+        $doc = DataObjectDocument::create($dataObject);
 
-        // Document should be indexable (as its value is now changed to ShowInSearch: 1)
+        $config = $this->mockConfig();
+        $config->set(
+            'getIndexesForDocument',
+            [
+                $doc->getIdentifier() => [
+                    'index' => 'data',
+                ],
+            ]
+        );
+
+        // Should not index as ShowInSearch is false for this DataObject
+        $this->assertFalse($doc->shouldIndex());
+
+        // Should index as ShowInSearch is now set to true
         $dataObject->ShowInSearch = true;
-        $dataObject->write();
-        $this->assertTrue($dataObject->shouldIndex());
+        $dataObject->publishRecursive();
+
+        $doc = DataObjectDocument::create($dataObject);
+
+        $this->assertTrue($doc->shouldIndex());
     }
+
 }
