@@ -693,7 +693,7 @@ class DataObjectDocument implements
 
                 $currentDataObject = $this->getDataObject();
 
-                $liveDataObject = DataObject::get($currentDataObject->ClassName)->byID($currentDataObject->ID);
+                $liveDataObject = $currentDataObject ? DataObject::get($currentDataObject->ClassName)->byID($currentDataObject->ID) : null;
 
                 if (!$liveDataObject) {
                     // unlikely case as indexer calls 'shouldIndex' immediately prior to this
