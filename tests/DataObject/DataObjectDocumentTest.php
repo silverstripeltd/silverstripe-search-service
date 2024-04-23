@@ -694,11 +694,13 @@ class DataObjectDocumentTest extends SearchServiceTest
         $this->assertEquals($id, $serialDoc->getDataObject()->ID);
 
         $doc->setShouldFallbackToLatestVersion(false);
-        $this->expectExceptionMessage(
-            sprintf('DataObject %s : %s does not exist', DataObjectFakeVersioned::class, $id)
-        );
 
-        unserialize(serialize($doc));
+        $serialDoc = unserialize(serialize($doc));
+
+        // the data object does not exist (it has been deleted), but we should still return some basic details
+        // for attempting a delete from elastic
+        $this->assertEquals('silverstripe_searchservice_tests_fake_dataobjectfakeversioned_1', $serialDoc->getIdentifier());
+        $this->assertEquals(DataObjectFakeVersioned::class, $serialDoc->getSourceClass());
     }
 
     public function testIndexDataObjectDocument(): void
