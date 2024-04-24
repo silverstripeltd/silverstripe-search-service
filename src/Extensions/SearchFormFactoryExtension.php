@@ -25,11 +25,16 @@ class SearchFormFactoryExtension extends Extension
         $excludedClasses = Config::inst()->get(self::class, 'exclude_classes') ?? [];
         $excludeFileTypes = Config::inst()->get(self::class, 'exclude_file_extensions') ?? [];
 
-        if (!$fields
-            || !$file
-            || in_array($file->ClassName, $excludedClasses)
-            || in_array($file->getExtension(), $excludeFileTypes)
-        ) {
+        if (!$fields || !$file) {
+            return;
+        }
+
+        if (in_array($file->ClassName, $excludedClasses) || in_array($file->getExtension(), $excludeFileTypes)) {
+            if ($file->ShowInSearch) {
+                $file->ShowInSearch = false;
+                $file->write();
+            }
+
             return;
         }
 
