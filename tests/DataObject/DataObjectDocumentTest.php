@@ -774,6 +774,7 @@ class DataObjectDocumentTest extends SearchServiceTest
         );
 
         // Should not index as ShowInSearch is false for this DataObject
+        $dataObject->publishRecursive();
         $this->assertFalse($doc->shouldIndex());
 
         // Should index as ShowInSearch is now set to true

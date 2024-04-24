@@ -19,9 +19,6 @@ SilverStripe\ORM\FieldType\DBHTMLVarchar:
 Symbiote\QueuedJobs\Controllers\QueuedJobsAdmin:
   extensions:
     - SilverStripe\SearchService\Extensions\QueuedJobsAdminExtension
-SilverStripe\AssetAdmin\Forms\FileFormFactory:
-  extensions:
-    - SilverStripe\SearchService\Extensions\SearchFormFactoryExtension
 ---
 Name: 'silverstripe-search-service-cms'
 Only:
@@ -31,3 +28,12 @@ SilverStripe\CMS\Model\SiteTree:
   extensions:
     SearchServiceExtension: SilverStripe\SearchService\Extensions\SearchServiceExtension
     SiteTreeHierarchyExtension: SilverStripe\SearchService\Extensions\SiteTreeHierarchyExtension
+---
+Name: search-service-form-extension
+---
+SilverStripe\AssetAdmin\Forms\FileFormFactory:
+  extensions:
+    - SilverStripe\SearchService\Extensions\SearchFormFactoryExtension
+SilverStripe\SearchService\Extensions\SearchFormFactoryExtension:
+  exclude_classes:
+    - SilverStripe\Assets\Image

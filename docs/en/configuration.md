@@ -254,6 +254,29 @@ __Additional note__:
 This is handled via `SubsiteIndexConfigurationExtension` - this logic could be
 replicated for other scenarios like languages if required.
 
+## Configuring search exclusion for files
+
+By default, `SilverStripe\Assets\Image` is excluded from the search. To change this default 
+setting, use the code snippet below.
+
+```yaml
+---
+After: search-service-form-extension
+---
+SilverStripe\SearchService\Extensions\SearchFormFactoryExtension:
+  exclude_classes: null
+```
+
+If you want to exclude certain file extensions from being added to the search index, add 
+the following configuration to your code base:
+
+```yaml
+SilverStripe\SearchService\Extensions\SearchFormFactoryExtension:
+  exclude_file_extensions: 
+    - svg
+    - mp4
+```
+
 ## More information
 
 * [Usage](usage.md)
