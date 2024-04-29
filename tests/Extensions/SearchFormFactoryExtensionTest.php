@@ -2,19 +2,19 @@
 
 namespace SilverStripe\SearchService\Tests\Extensions;
 
-use SilverStripe\Forms\Form;
 use SilverStripe\Assets\File;
 use SilverStripe\Assets\Image;
-use SilverStripe\Forms\TabSet;
-use SilverStripe\Forms\FieldList;
-use SilverStripe\Dev\SapphireTest;
 use SilverStripe\Core\Config\Config;
+use SilverStripe\Dev\SapphireTest;
+use SilverStripe\Forms\FieldList;
+use SilverStripe\Forms\Form;
+use SilverStripe\Forms\TabSet;
 use SilverStripe\SearchService\Extensions\SearchFormFactoryExtension;
 
 class SearchFormFactoryExtensionTest extends SapphireTest
 {
 
-    protected static $fixture_file = [
+    protected static $fixture_file = [ // phpcs:ignore
         '../fixtures.yml',
         '../pages.yml',
     ];

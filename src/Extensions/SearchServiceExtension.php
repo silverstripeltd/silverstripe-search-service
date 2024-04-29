@@ -41,7 +41,7 @@ class SearchServiceExtension extends DataExtension
         'SearchIndexed' => 'Datetime',
     ];
 
-    private static $defaults = [
+    private static array $defaults = [
         'ShowInSearch' => true,
     ];
 
@@ -65,8 +65,14 @@ class SearchServiceExtension extends DataExtension
             return;
         }
 
-        $showInSearchField = CheckboxField::create("ShowInSearch", _t(self::class . '.ShowInSearch', 'Show in search?'));
-        $searchIndexedField = ReadonlyField::create('SearchIndexed', _t(self::class . '.LastIndexed', 'Last indexed in search'));
+        $showInSearchField = CheckboxField::create(
+            'ShowInSearch',
+            _t(self::class . '.ShowInSearch', 'Show in search?')
+        );
+        $searchIndexedField = ReadonlyField::create(
+            'SearchIndexed',
+            _t(self::class . '.LastIndexed', 'Last indexed in search')
+        );
 
         if ($fields->hasTabSet()) {
             $fields->addFieldToTab('Root.Main', $showInSearchField);
