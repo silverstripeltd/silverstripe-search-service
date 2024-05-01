@@ -3,6 +3,7 @@
 namespace SilverStripe\SearchService\Extensions;
 
 use Exception;
+use SilverStripe\CMS\Model\SiteTree;
 use SilverStripe\Core\Config\Configurable;
 use SilverStripe\Core\Injector\Injectable;
 use SilverStripe\Forms\CheckboxField;
@@ -74,8 +75,7 @@ class SearchServiceExtension extends DataExtension
             _t(self::class . '.LastIndexed', 'Last indexed in search')
         );
 
-        if ($fields->hasTabSet()) {
-            $fields->addFieldToTab('Root.Main', $showInSearchField);
+        if ($this->owner instanceof SiteTree) {
             $fields->addFieldToTab('Root.Main', $searchIndexedField);
         } else {
             $fields->push($showInSearchField);
