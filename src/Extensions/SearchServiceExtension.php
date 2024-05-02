@@ -3,8 +3,10 @@
 namespace SilverStripe\SearchService\Extensions;
 
 use Exception;
+use SilverStripe\CMS\Model\SiteTree;
 use SilverStripe\Core\Config\Configurable;
 use SilverStripe\Core\Injector\Injectable;
+use SilverStripe\Forms\CheckboxField;
 use SilverStripe\Forms\FieldList;
 use SilverStripe\Forms\ReadonlyField;
 use SilverStripe\ORM\DataExtension;
@@ -36,7 +38,12 @@ class SearchServiceExtension extends DataExtension
     use BatchProcessorAware;
 
     private static array $db = [
+        'ShowInSearch' => 'Boolean',
         'SearchIndexed' => 'Datetime',
+    ];
+
+    private static array $defaults = [
+        'ShowInSearch' => true,
     ];
 
     private bool $hasConfigured = false;
@@ -53,19 +60,49 @@ class SearchServiceExtension extends DataExtension
         $this->setBatchProcessor($batchProcessor);
     }
 
+    /**
+     * General DataObject Search settings
+     *
+     * @param FieldList $fields
+     * @return void
+     */
     public function updateCMSFields(FieldList $fields): void
     {
-        if (!$this->getConfiguration()->isEnabled()) {
+        if ($this->owner instanceof SiteTree || !$this->getConfiguration()->isEnabled()) {
             return;
         }
 
-        $field = ReadonlyField::create('SearchIndexed', _t(self::class.'.LastIndexed', 'Last indexed in search'));
+        $showInSearchField = CheckboxField::create(
+            'ShowInSearch',
+            _t(self::class . '.ShowInSearch', 'Show in search?')
+        );
+        $searchIndexedField = ReadonlyField::create(
+            'SearchIndexed',
+            _t(self::class . '.LastIndexed', 'Last indexed in search')
+        );
 
-        if ($fields->hasTabSet()) {
-            $fields->addFieldToTab('Root.Main', $field);
-        } else {
-            $fields->push($field);
+        $fields->push($showInSearchField);
+        $fields->push($searchIndexedField);
+    }
+
+    /**
+     * Specific settings for SiteTree
+     *
+     * @param FieldList $fields
+     * @return void
+     */
+    public function updateSettingsFields(FieldList $fields): void
+    {
+        if (!$this->owner instanceof SiteTree || !$this->getConfiguration()->isEnabled()) {
+            return;
         }
+
+        $searchIndexedField = ReadonlyField::create(
+            'SearchIndexed',
+            _t(self::class . '.LastIndexed', 'Last indexed in search')
+        );
+
+        $fields->insertAfter('ShowInSearch', $searchIndexedField);
     }
 
     /**

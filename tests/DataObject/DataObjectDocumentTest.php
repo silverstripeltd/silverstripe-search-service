@@ -758,4 +758,32 @@ class DataObjectDocumentTest extends SearchServiceTest
         });
     }
 
+    public function testIndexDataObjectDocumentShowInSearch(): void
+    {
+        $dataObject = $this->objFromFixture(DataObjectFakeVersioned::class, 'two');
+        $doc = DataObjectDocument::create($dataObject);
+
+        $config = $this->mockConfig();
+        $config->set(
+            'getIndexesForDocument',
+            [
+                $doc->getIdentifier() => [
+                    'index' => 'data',
+                ],
+            ]
+        );
+
+        // Should not index as ShowInSearch is false for this DataObject
+        $dataObject->publishRecursive();
+        $this->assertFalse($doc->shouldIndex());
+
+        // Should index as ShowInSearch is now set to true
+        $dataObject->ShowInSearch = true;
+        $dataObject->publishRecursive();
+
+        $doc = DataObjectDocument::create($dataObject);
+
+        $this->assertTrue($doc->shouldIndex());
+    }
+
 }
