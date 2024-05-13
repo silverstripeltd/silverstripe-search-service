@@ -1,0 +1,7 @@
+{
+    "name": "silverstripe-search-service",
+    "description": "Service agnostic abstraction of search indexing and configuration requirements",
+    "main": "README.md",
+    "repository": "https://github.com/silverstripe/silverstripe-search-service",
+    "author": "Silverstripe Ltd"
+  }
