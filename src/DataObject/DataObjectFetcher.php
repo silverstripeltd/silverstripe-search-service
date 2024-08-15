@@ -24,7 +24,7 @@ class DataObjectFetcher implements DocumentFetcherInterface
 
     private ?string $dataObjectClass = null;
 
-    public DocumentFetchCreatorRegistry $Register;
+    public DocumentFetchCreatorRegistry $Registry;
 
     private static array $dependencies = [
         'Configuration' => '%$' . IndexConfiguration::class,
