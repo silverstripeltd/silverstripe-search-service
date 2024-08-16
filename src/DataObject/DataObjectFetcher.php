@@ -14,6 +14,7 @@ use SilverStripe\SearchService\Service\DocumentFetchCreatorRegistry;
 use SilverStripe\SearchService\Service\IndexConfiguration;
 use SilverStripe\SearchService\Service\Traits\ConfigurationAware;
 
+#[\AllowDynamicProperties]
 class DataObjectFetcher implements DocumentFetcherInterface
 {
 
@@ -23,8 +24,6 @@ class DataObjectFetcher implements DocumentFetcherInterface
     use ConfigurationAware;
 
     private ?string $dataObjectClass = null;
-
-    public DocumentFetchCreatorRegistry $Registry;
 
     private static array $dependencies = [
         'Configuration' => '%$' . IndexConfiguration::class,
