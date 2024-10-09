@@ -5,6 +5,7 @@ namespace SilverStripe\SearchService\DataObject;
 use Exception;
 use InvalidArgumentException;
 use LogicException;
+use Psr\Log\LoggerInterface;
 use SilverStripe\Core\Config\Configurable;
 use SilverStripe\Core\Extensible;
 use SilverStripe\Core\Injector\Injectable;
@@ -85,15 +86,33 @@ class DataObjectDocument implements
 
     private bool $shouldFallbackToLatestVersion = false;
 
+    /**
+     * This will be set automatically
+     *
+     * @var LoggerInterface
+     */
+    private $logger;
+
     private static array $dependencies = [
         'IndexService' => '%$' . IndexingInterface::class,
         'PageCrawler' => '%$' . PageCrawler::class,
         'Configuration' => '%$' . IndexConfiguration::class,
+        'Logger' => '%$' . LoggerInterface::class,
     ];
 
     public function __construct(DataObject $dataObject)
     {
         $this->setDataObject($dataObject);
+    }
+
+    /**
+     * @param LoggerInterface $logger
+     * @return $this
+     */
+    public function setLogger(LoggerInterface $logger)
+    {
+        $this->logger = $logger;
+        return $this;
     }
 
     public function getIdentifier(): string
@@ -594,6 +613,24 @@ class DataObjectDocument implements
         return [null, $this->resolveField($field->getSearchFieldName())];
     }
 
+    /**
+     * Returns an array containing the database records of
+     * a DataObject instance according to the given Document.
+     *
+     * @return array
+     */
+    private function getDocumentRecordFields(): array
+    {
+        $dataObject = $this->getDataObject();
+
+        return [
+            'ID' => $dataObject->ID,
+            'ClassName' => $dataObject->ClassName,
+            'Title' => $dataObject->Title,
+            'URL' => method_exists($dataObject, 'link') ? $dataObject->link() : '',
+        ];
+    }
+
     public function __serialize(): array
     {
         return [
@@ -663,6 +700,27 @@ class DataObjectDocument implements
         if ($event === DocumentRemoveHandler::AFTER_REMOVE) {
             $this->markIndexed(true);
         }
+    }
+
+    /**
+     * @param array $error The errors associated with a document
+     * @param string $indexName The name of the index the document was being added to
+     * @return void
+     */
+    public function onErrorFromSearchIndex($error, $indexName): void
+    {
+        $recordFields = $this->getDocumentRecordFields();
+
+        $message = [
+            'Message' => sprintf('Unable to index a document to %s', $indexName),
+            'Title' => $recordFields['Title'],
+            'URL' => $recordFields['URL'],
+            'ID' => $recordFields['ID'],
+            'ClassName' => $recordFields['ClassName'],
+            'Error' => implode('|', array_values($error)),
+        ];
+
+        $this->logger->error(json_encode($message));
     }
 
 }

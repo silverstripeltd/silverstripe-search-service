@@ -101,11 +101,15 @@ class EnterpriseSearchService implements IndexingInterface, BatchDocumentRemoval
         $processedIds = [];
 
         foreach ($documentMap as $indexName => $docsToAdd) {
+            // TEMP change to force an error
+            $docsToAdd[0]['fruit'] = 'TEST'; // expecting an integer
+
             $response = $this->getClient()->appSearch()
                 ->indexDocuments(new IndexDocuments(static::environmentizeIndex($indexName), $docsToAdd))
                 ->asArray();
 
-            $this->handleError($response);
+            // log error, but continue to index
+            $this->handleErrorAndContinue($response, $indexName, $documents);
 
             // Grab all the ID values, and also cast them to string
             $processedIds += array_map('strval', array_column($response, 'id'));
@@ -504,6 +508,31 @@ class EnterpriseSearchService implements IndexingInterface, BatchDocumentRemoval
             'EnterpriseSearch API error: %s',
             print_r($allErrors, true)
         ));
+    }
+
+
+    /**
+     * Handle index errors, and log, but don't throw exception and allow to continue indexing.
+     *
+     * @param array|null $responseBody
+     * @param string $indexName
+     * @param array $documents
+     * @return void
+     */
+    protected function handleErrorAndContinue(?array $responseBody, string $indexName, array $documents): void
+    {
+        if (!is_array($responseBody)) {
+            return;
+        }
+
+        foreach ($responseBody as $key => $response) {
+            if (!$response['errors']) {
+                return;
+            }
+
+            $document = $documents[$key];
+            $document->onErrorFromSearchIndex($response['errors'], $indexName);
+        }
     }
 
     /**

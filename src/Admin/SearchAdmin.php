@@ -206,6 +206,11 @@ class SearchAdmin extends LeftAndMain implements PermissionProvider
                     $query->where('ShowInSearch = 1');
                 }
 
+                // where appropriate, make sure we only show database total for this index
+                if ($class::singleton()->hasField('Subsite')) {
+                    $query->where(sprintf('SubsiteID = %s', $index));
+                }
+
                 $this->extend('updateQuery', $query, $data);
                 $localCount += $query->count();
             }
