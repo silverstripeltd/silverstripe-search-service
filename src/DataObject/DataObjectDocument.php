@@ -7,6 +7,7 @@ use InvalidArgumentException;
 use LogicException;
 use Psr\Log\LoggerInterface;
 use SilverStripe\Core\Config\Configurable;
+use SilverStripe\Core\Environment;
 use SilverStripe\Core\Extensible;
 use SilverStripe\Core\Injector\Injectable;
 use SilverStripe\Core\Injector\Injector;
@@ -624,10 +625,10 @@ class DataObjectDocument implements
         $dataObject = $this->getDataObject();
 
         return [
-            'ID' => $dataObject->ID,
-            'ClassName' => $dataObject->ClassName,
             'Title' => $dataObject->Title,
-            'URL' => method_exists($dataObject, 'link') ? $dataObject->link() : '',
+            'URL' => method_exists($dataObject, 'link') ? $dataObject->Link('stage', 'Live') : '',
+            'ClassName' => $dataObject->ClassName,
+            'ID' => $dataObject->ID,
         ];
     }
 
@@ -692,6 +693,15 @@ class DataObjectDocument implements
 
         if ($event === DocumentAddHandler::AFTER_ADD) {
             $this->markIndexed();
+
+            if (Environment::hasEnv('REINDEXJOB_LOG_ALL')) {
+                $log = array_merge(
+                    ['Message' => 'Successfully indexed document'],
+                    $this->getDocumentRecordFields(),
+                );
+
+                $this->logger->info(sprintf('[SEARCH SERVICE]: %s', json_encode($log)));
+            }
         }
     }
 
@@ -699,28 +709,31 @@ class DataObjectDocument implements
     {
         if ($event === DocumentRemoveHandler::AFTER_REMOVE) {
             $this->markIndexed(true);
+
+            if (Environment::hasEnv('REINDEXJOB_LOG_ALL')) {
+                $log = array_merge(
+                    ['Message' => 'Successfully removed document from index'],
+                    $this->getDocumentRecordFields(),
+                );
+
+                $this->logger->info(sprintf('[SEARCH SERVICE]: %s', json_encode($log)));
+            }
         }
     }
 
     /**
-     * @param array $error The errors associated with a document
+     * @param array $error The errors returned from indexing a document
      * @param string $indexName The name of the index the document was being added to
      * @return void
      */
-    public function onErrorFromSearchIndex($error, $indexName): void
+    public function onErrorFromIndexing(array $error, string $indexName): void
     {
-        $recordFields = $this->getDocumentRecordFields();
+        $log = array_merge(
+            ['Message' => sprintf('Unable to index a document to %s', $indexName)],
+            $this->getDocumentRecordFields(),
+            ['Error' => implode('|', array_values($error))]
+        );
 
-        $message = [
-            'Message' => sprintf('Unable to index a document to %s', $indexName),
-            'Title' => $recordFields['Title'],
-            'URL' => $recordFields['URL'],
-            'ID' => $recordFields['ID'],
-            'ClassName' => $recordFields['ClassName'],
-            'Error' => implode('|', array_values($error)),
-        ];
-
-        $this->logger->error(json_encode($message));
+        $this->logger->error(sprintf('[SEARCH SERVICE ERROR]: %s', json_encode($log)));
     }
-
 }

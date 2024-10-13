@@ -3,8 +3,10 @@
 namespace SilverStripe\SearchService\Service;
 
 use InvalidArgumentException;
+use Psr\Log\LoggerInterface;
 use SilverStripe\Core\Config\Configurable;
 use SilverStripe\Core\Injector\Injectable;
+use SilverStripe\Core\Injector\Injector;
 use SilverStripe\SearchService\Interfaces\DependencyTracker;
 use SilverStripe\SearchService\Interfaces\DocumentAddHandler;
 use SilverStripe\SearchService\Interfaces\DocumentInterface;
@@ -106,6 +108,12 @@ class Indexer
                     }
                 }
             }
+        }
+
+        if ($this->getIndexService()->hasIndexingErrors) {
+            Injector::inst()->get(LoggerInterface::class)->warning(
+                '[SEARCH SERVICE] Indexed with errors'
+            );
         }
 
         $this->chunks = $remainingChildren;

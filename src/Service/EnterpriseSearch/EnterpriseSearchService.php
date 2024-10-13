@@ -46,6 +46,8 @@ class EnterpriseSearchService implements IndexingInterface, BatchDocumentRemoval
 
     private static int $max_document_size = 102400;
 
+    public bool $hasIndexingErrors = false;
+
     public function __construct(Client $client, IndexConfiguration $configuration, DocumentBuilder $exporter)
     {
         $this->setClient($client);
@@ -100,16 +102,18 @@ class EnterpriseSearchService implements IndexingInterface, BatchDocumentRemoval
         $documentMap = $this->getContentMapForDocuments($documents);
         $processedIds = [];
 
-        foreach ($documentMap as $indexName => $docsToAdd) {
-            // TEMP change to force an error
-            $docsToAdd[0]['fruit'] = 'TEST'; // expecting an integer
+        $indexedWithErrors = false;
 
+        foreach ($documentMap as $indexName => $docsToAdd) {
             $response = $this->getClient()->appSearch()
                 ->indexDocuments(new IndexDocuments(static::environmentizeIndex($indexName), $docsToAdd))
                 ->asArray();
 
-            // log error, but continue to index
-            $this->handleErrorAndContinue($response, $indexName, $documents);
+            // check for any errors, and log them, but continue to index
+            $hasErrors = $this->handleErrorAndContinue($response, $indexName, $documents);
+            if ($hasErrors) {
+                $this->hasIndexingErrors = true;
+            }
 
             // Grab all the ID values, and also cast them to string
             $processedIds += array_map('strval', array_column($response, 'id'));
@@ -517,22 +521,27 @@ class EnterpriseSearchService implements IndexingInterface, BatchDocumentRemoval
      * @param array|null $responseBody
      * @param string $indexName
      * @param array $documents
-     * @return void
+     * @return bool Whether any errors were logged
      */
-    protected function handleErrorAndContinue(?array $responseBody, string $indexName, array $documents): void
+    protected function handleErrorAndContinue(?array $responseBody, string $indexName, array $documents): bool
     {
+        $errorsHandled = false;
+
         if (!is_array($responseBody)) {
-            return;
+            return false;
         }
 
         foreach ($responseBody as $key => $response) {
             if (!$response['errors']) {
-                return;
+                continue;
             }
 
             $document = $documents[$key];
-            $document->onErrorFromSearchIndex($response['errors'], $indexName);
+            $document->onErrorFromIndexing($response['errors'], $indexName);
+            $errorsHandled = true;
         }
+
+        return $errorsHandled;
     }
 
     /**
@@ -621,11 +630,15 @@ class EnterpriseSearchService implements IndexingInterface, BatchDocumentRemoval
 
         foreach ($documents as $document) {
             if (!$document instanceof DocumentInterface) {
-                throw new InvalidArgumentException(sprintf(
-                    '%s not passed an instance of %s',
-                    __FUNCTION__,
-                    DocumentInterface::class
-                ));
+                Injector::inst()->get(LoggerInterface::class)->warning(
+                    sprintf(
+                        '%s not passed an instance of %s',
+                        __FUNCTION__,
+                        DocumentInterface::class
+                    )
+                );
+
+                continue;
             }
 
             if (!$document->shouldIndex()) {
@@ -636,7 +649,11 @@ class EnterpriseSearchService implements IndexingInterface, BatchDocumentRemoval
                 $fields = $this->getBuilder()->toArray($document);
             } catch (IndexConfigurationException $e) {
                 Injector::inst()->get(LoggerInterface::class)->warning(
-                    sprintf('Failed to convert document to array: %s', $e->getMessage())
+                    sprintf(
+                        'Failed to convert document to array: %s | %s',
+                        $document->getIdentifier(),
+                        $e->getMessage()
+                    )
                 );
 
                 continue;
