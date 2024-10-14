@@ -110,7 +110,12 @@ class Indexer
             }
         }
 
-        if ($this->getIndexService()->hasIndexingErrors) {
+        // Check if we can determine errors were encountered during indexing
+        // and log warning if so.
+        if (
+            property_exists($this->getIndexService(), 'hasIndexingErrors')
+            && $this->getIndexService()->hasIndexingErrors
+        ) {
             Injector::inst()->get(LoggerInterface::class)->warning(
                 '[SEARCH SERVICE] Indexed with errors'
             );
