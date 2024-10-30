@@ -46,6 +46,8 @@ class EnterpriseSearchService implements IndexingInterface, BatchDocumentRemoval
 
     private static int $max_document_size = 102400;
 
+    public bool $hasIndexingErrors = false;
+
     public function __construct(Client $client, IndexConfiguration $configuration, DocumentBuilder $exporter)
     {
         $this->setClient($client);
@@ -100,12 +102,18 @@ class EnterpriseSearchService implements IndexingInterface, BatchDocumentRemoval
         $documentMap = $this->getContentMapForDocuments($documents);
         $processedIds = [];
 
+        $indexedWithErrors = false;
+
         foreach ($documentMap as $indexName => $docsToAdd) {
             $response = $this->getClient()->appSearch()
                 ->indexDocuments(new IndexDocuments(static::environmentizeIndex($indexName), $docsToAdd))
                 ->asArray();
 
-            $this->handleError($response);
+            // check for any errors, and log them, but continue to index
+            $hasErrors = $this->handleErrorAndContinue($response, $indexName, $documents);
+            if ($hasErrors) {
+                $this->hasIndexingErrors = true;
+            }
 
             // Grab all the ID values, and also cast them to string
             $processedIds += array_map('strval', array_column($response, 'id'));
@@ -506,6 +514,36 @@ class EnterpriseSearchService implements IndexingInterface, BatchDocumentRemoval
         ));
     }
 
+
+    /**
+     * Handle index errors, and log, but don't throw exception and allow to continue indexing.
+     *
+     * @param array|null $responseBody
+     * @param string $indexName
+     * @param array $documents
+     * @return bool Whether any errors were logged
+     */
+    protected function handleErrorAndContinue(?array $responseBody, string $indexName, array $documents): bool
+    {
+        $errorsHandled = false;
+
+        if (!is_array($responseBody)) {
+            return false;
+        }
+
+        foreach ($responseBody as $key => $response) {
+            if (!isset($response['errors']) || sizeof($response['errors']) === 0) {
+                continue;
+            }
+
+            $document = $documents[$key];
+            $document->onErrorFromIndexing($response['errors'], $indexName);
+            $errorsHandled = true;
+        }
+
+        return $errorsHandled;
+    }
+
     /**
      * @param Field[] $fields
      */
@@ -592,11 +630,15 @@ class EnterpriseSearchService implements IndexingInterface, BatchDocumentRemoval
 
         foreach ($documents as $document) {
             if (!$document instanceof DocumentInterface) {
-                throw new InvalidArgumentException(sprintf(
-                    '%s not passed an instance of %s',
-                    __FUNCTION__,
-                    DocumentInterface::class
-                ));
+                Injector::inst()->get(LoggerInterface::class)->warning(
+                    sprintf(
+                        '%s not passed an instance of %s',
+                        __FUNCTION__,
+                        DocumentInterface::class
+                    )
+                );
+
+                continue;
             }
 
             if (!$document->shouldIndex()) {
@@ -607,7 +649,11 @@ class EnterpriseSearchService implements IndexingInterface, BatchDocumentRemoval
                 $fields = $this->getBuilder()->toArray($document);
             } catch (IndexConfigurationException $e) {
                 Injector::inst()->get(LoggerInterface::class)->warning(
-                    sprintf('Failed to convert document to array: %s', $e->getMessage())
+                    sprintf(
+                        'Failed to convert document to array: %s | %s',
+                        $document->getIdentifier(),
+                        $e->getMessage()
+                    )
                 );
 
                 continue;

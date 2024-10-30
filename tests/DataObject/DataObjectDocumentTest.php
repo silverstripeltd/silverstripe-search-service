@@ -598,6 +598,11 @@ class DataObjectDocumentTest extends SearchServiceTest
         $mock->expects($this->exactly(2))
             ->method('markIndexed');
 
+        $dataObject = DataObjectFakeVersioned::create(['Title' => 'Document']);
+        $dataObject->publishSingle();
+
+        $mock->setDataObject($dataObject);
+
         $mock->onAddToSearchIndexes(DocumentAddHandler::BEFORE_ADD);
         $mock->onAddToSearchIndexes(DocumentAddHandler::AFTER_ADD);
         $mock->onRemoveFromSearchIndexes(DocumentRemoveHandler::BEFORE_REMOVE);

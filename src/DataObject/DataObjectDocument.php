@@ -5,7 +5,9 @@ namespace SilverStripe\SearchService\DataObject;
 use Exception;
 use InvalidArgumentException;
 use LogicException;
+use Psr\Log\LoggerInterface;
 use SilverStripe\Core\Config\Configurable;
+use SilverStripe\Core\Environment;
 use SilverStripe\Core\Extensible;
 use SilverStripe\Core\Injector\Injectable;
 use SilverStripe\Core\Injector\Injector;
@@ -85,15 +87,33 @@ class DataObjectDocument implements
 
     private bool $shouldFallbackToLatestVersion = false;
 
+    /**
+     * This will be set automatically
+     *
+     * @var LoggerInterface
+     */
+    private $logger;
+
     private static array $dependencies = [
         'IndexService' => '%$' . IndexingInterface::class,
         'PageCrawler' => '%$' . PageCrawler::class,
         'Configuration' => '%$' . IndexConfiguration::class,
+        'Logger' => '%$' . LoggerInterface::class,
     ];
 
     public function __construct(DataObject $dataObject)
     {
         $this->setDataObject($dataObject);
+    }
+
+    /**
+     * @param LoggerInterface $logger
+     * @return $this
+     */
+    public function setLogger(LoggerInterface $logger)
+    {
+        $this->logger = $logger;
+        return $this;
     }
 
     public function getIdentifier(): string
@@ -594,6 +614,24 @@ class DataObjectDocument implements
         return [null, $this->resolveField($field->getSearchFieldName())];
     }
 
+    /**
+     * Returns an array containing the database records of
+     * a DataObject instance according to the given Document.
+     *
+     * @return array
+     */
+    private function getDocumentRecordFields(): array
+    {
+        $dataObject = $this->getDataObject();
+
+        return [
+            'Title' => $dataObject->Title,
+            'URL' => method_exists($dataObject, 'link') ? $dataObject->Link('stage', 'Live') : '',
+            'ClassName' => $dataObject->ClassName,
+            'ID' => $dataObject->ID,
+        ];
+    }
+
     public function __serialize(): array
     {
         return [
@@ -655,6 +693,15 @@ class DataObjectDocument implements
 
         if ($event === DocumentAddHandler::AFTER_ADD) {
             $this->markIndexed();
+
+            if (Environment::hasEnv('REINDEXJOB_LOG_ALL')) {
+                $log = array_merge(
+                    ['Message' => 'Successfully indexed document'],
+                    $this->getDocumentRecordFields(),
+                );
+
+                $this->logger->info(sprintf('[SEARCH SERVICE]: %s', json_encode($log)));
+            }
         }
     }
 
@@ -662,7 +709,31 @@ class DataObjectDocument implements
     {
         if ($event === DocumentRemoveHandler::AFTER_REMOVE) {
             $this->markIndexed(true);
+
+            if (Environment::hasEnv('REINDEXJOB_LOG_ALL')) {
+                $log = array_merge(
+                    ['Message' => 'Successfully removed document from index'],
+                    $this->getDocumentRecordFields(),
+                );
+
+                $this->logger->info(sprintf('[SEARCH SERVICE]: %s', json_encode($log)));
+            }
         }
     }
 
+    /**
+     * @param array $error The errors returned from indexing a document
+     * @param string $indexName The name of the index the document was being added to
+     * @return void
+     */
+    public function onErrorFromIndexing(array $error, string $indexName): void
+    {
+        $log = array_merge(
+            ['Message' => sprintf('Unable to index a document to %s', $indexName)],
+            $this->getDocumentRecordFields(),
+            ['Error' => implode('|', array_values($error))]
+        );
+
+        $this->logger->error(sprintf('[SEARCH SERVICE ERROR]: %s', json_encode($log)));
+    }
 }
