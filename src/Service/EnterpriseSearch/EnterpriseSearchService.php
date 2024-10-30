@@ -532,7 +532,7 @@ class EnterpriseSearchService implements IndexingInterface, BatchDocumentRemoval
         }
 
         foreach ($responseBody as $key => $response) {
-            if (!$response['errors']) {
+            if (!isset($response['errors']) || sizeof($response['errors']) === 0) {
                 continue;
             }
 

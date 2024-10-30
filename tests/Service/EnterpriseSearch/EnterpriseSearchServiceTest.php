@@ -8,7 +8,10 @@ use GuzzleHttp\Client as GuzzleClient;
 use GuzzleHttp\Handler\MockHandler;
 use GuzzleHttp\HandlerStack;
 use GuzzleHttp\Psr7\Response;
+use Monolog\Logger;
 use Page;
+use PHPUnit\Framework\MockObject\MockObject;
+use Psr\Log\LoggerInterface;
 use ReflectionMethod;
 use SilverStripe\Core\Environment;
 use SilverStripe\Core\Injector\Injector;
@@ -43,6 +46,8 @@ class EnterpriseSearchServiceTest extends SearchServiceTest
     ];
 
     protected ?MockHandler $mock;
+
+    protected ?MockObject $mockLogger;
 
     protected EnterpriseSearchService $searchService;
 
@@ -1243,36 +1248,60 @@ class EnterpriseSearchServiceTest extends SearchServiceTest
         $this->assertEqualsCanonicalizing([], $resultIds);
     }
 
-    public function testAddDocumentsError(): void
+
+    /**
+     * Test that when an error occurs, the remaining documents are processed and errors are logged.
+     */
+    public function testAddDocumentsWithErrorAndContinue(): void
     {
         $documentOne = $this->objFromFixture(DataObjectFake::class, 'one');
-        $documents = [DataObjectDocument::create($documentOne)];
+        $documentTwo = $this->objFromFixture(DataObjectFake::class, 'two');
+        $documentThree = $this->objFromFixture(DataObjectFake::class, 'three');
 
-        $this->expectExceptionMessage('Testing failure');
+        $documents = [
+            DataObjectDocument::create($documentOne),
+            DataObjectDocument::create($documentTwo),
+            DataObjectDocument::create($documentThree)
+        ];
 
         // Valid headers
         $headers = [
             'Content-Type' => 'application/json;charset=utf-8',
         ];
-        // Body content containing errors
-        $body = json_encode([
+
+        $response = json_encode([
             [
-                'id' => 'doc-123',
+                'id' => 'silverstripe_cms_model_sitetree_1',
                 'errors' => [
-                    'Testing failure',
+                    'Invalid field value=> Value \'Test\' cannot be parsed as a float',
                 ],
             ],
+            [
+                'id'=> 'silverstripe_cms_model_sitetree_2',
+                'errors'=> [],
+            ],
+            [
+                'id'=> 'silverstripe_cms_model_sitetree_3',
+                'errors'=> [],
+            ]
         ]);
 
         // Append this mock response to our stack
-        $this->mock->append(new Response(200, $headers, $body));
+        $this->mock->append(new Response(200, $headers, $response));
 
-        // We expect this to throw an Exception
-        $this->searchService->addDocuments($documents);
+        $error = '[SEARCH SERVICE ERROR]: {"Message":"Unable to index a document to content"'
+            . ',"Title":"Dataobject one","URL":"","ClassName":"SilverStripe\\\\SearchService\\\\'
+            . 'Tests\\\\Fake\\\\DataObjectFake","ID":1,"Error":"Invalid field value=> Value \'Test\' cannot'
+            . ' be parsed as a float"}';
 
-        // And make sure nothing is left in our Response Stack. This would indicate that every Request we expect to make
-        // has been made
-        $this->assertEquals(0, $this->mock->count());
+        $this->mockLogger->expects($this->once())
+            ->method('error')
+            ->with($error);
+
+        $processedIds = $this->searchService->addDocuments($documents);
+
+        // check that all docs were processed, indicating no exceptions were thrown
+        $this->assertCount(3, $processedIds);
     }
 
     public function testAddDocument(): void
@@ -1651,6 +1680,15 @@ class EnterpriseSearchServiceTest extends SearchServiceTest
         $documentBuilder = Injector::inst()->get(DocumentBuilder::class);
 
         $this->searchService = EnterpriseSearchService::create($elasticClient, $indexConfiguration, $documentBuilder);
+
+
+        // mock logger so we can check errors were logged
+        $this->mockLogger = $this->getMockBuilder(Logger::class)
+            ->setConstructorArgs(['error-log'])
+            ->onlyMethods(['error'])
+            ->getMock();
+
+        Injector::inst()->registerService($this->mockLogger, LoggerInterface::class);
     }
 
 }
