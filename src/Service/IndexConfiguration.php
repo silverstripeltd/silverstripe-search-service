@@ -94,6 +94,7 @@ class IndexConfiguration
 
     public function getIndexes(): array
     {
+        // as defined in the yml. for example content or main
         $indexes = $this->config()->get('indexes');
 
         // Convert environment variable defined in YML config to its value
@@ -101,12 +102,15 @@ class IndexConfiguration
             $configuration = $this->environmentVariableToValue($configuration);
         });
 
+        // if not requesting indexing of specific indexes, return all
         if (!$this->onlyIndexes) {
             return $indexes;
         }
 
+        // get the requested indexes for indexing
         foreach (array_keys($indexes) as $index) {
-            if (!in_array($index, $this->onlyIndexes)) {
+            // note onlyIndexes includes the index variant, so append that when checking for matching key
+            if (!in_array(sprintf('%s-%s', $this->indexVariant, $index), $this->onlyIndexes)) {
                 unset($indexes[$index]);
             }
         }
