@@ -31,6 +31,8 @@ class DataObjectBatchProcessor extends BatchProcessor
         $this->run($job);
 
         foreach ($documents as $doc) {
+            // Indexer::METHOD_ADD as default parameter make sure we check first its related documents
+            // and decide whether we should delete or update them automatically.
             $childJob = RemoveDataObjectJob::create($doc, $timestamp);
             $this->run($childJob);
         }

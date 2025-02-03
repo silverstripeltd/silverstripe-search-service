@@ -1,23 +1,73 @@
+SilverStripe\SearchService\Tests\Fake\TagFake:
+  four:
+    Title: Tag four
+  five:
+    Title: Tag five
+  six:
+    Title: Tag six
+
+SilverStripe\SearchService\Tests\Fake\ImageFake:
+  three:
+    Title: Image Fake Three
+    URL: "/image-three/"
+    Tags: =>SilverStripe\SearchService\Tests\Fake\TagFake.four,=>SilverStripe\SearchService\Tests\Fake\TagFake.five
+  four:
+    Title: Image Fake Four
+    URL: "/image-four/"
+    Tags: =>SilverStripe\SearchService\Tests\Fake\TagFake.five,=>SilverStripe\SearchService\Tests\Fake\TagFake.six
+  five:
+    Title: Image Fake Five
+    URL: "/image-five/"
+    Tags: =>SilverStripe\SearchService\Tests\Fake\TagFake.six
+
 Page:
   page1:
-    Title: Parent Page
+    Title: Parent Page 1
     ShowInSearch: 1
   page2:
-    Title: Child Page 1
+    Title: Child of Parent Page 1 - A
     Parent: =>Page.page1
     ShowInSearch: 1
   page3:
-    Title: Child Page 2
+    Title: Child of Parent Page 1 - B
     Parent: =>Page.page1
     ShowInSearch: 1
   page4:
     Title: Parent Page 2
     ShowInSearch: 1
   page5:
-    Title: Child Page 3
+    Title: Child of Parent Page 2 - A
     Parent: =>Page.page4
     ShowInSearch: 1
   page6:
     Title: Subsite Page 1
     Subsite: =>SilverStripe\Subsites\Model\Subsite.subsite1
+    ShowInSearch: 1
+  page7:
+    Title: Grandchild of Parent Page 1 - A1
+    Parent: =>Page.page2
+    ShowInSearch: 1
+  page8:
+    Title: Grandchild of Parent Page 1 - A2
+    Parent: =>Page.page2
+    ShowInSearch: 1
+
+SilverStripe\SearchService\Tests\Fake\PageFake:
+  page9:
+    Title: Child of Parent Page 2 - B
+    Parent: =>Page.page4
+    Tags: =>SilverStripe\SearchService\Tests\Fake\TagFake.four,=>SilverStripe\SearchService\Tests\Fake\TagFake.five
+    Images: =>SilverStripe\SearchService\Tests\Fake\ImageFake.three
+    ShowInSearch: 1
+  page10:
+    Title: Grandchild of Parent Page 2 - B1
+    Parent: =>SilverStripe\SearchService\Tests\Fake\PageFake.page9
+    Tags: =>SilverStripe\SearchService\Tests\Fake\TagFake.five,=>SilverStripe\SearchService\Tests\Fake\TagFake.six
+    Images: =>SilverStripe\SearchService\Tests\Fake\ImageFake.four
+    ShowInSearch: 1
+  page11:
+    Title: Great Grandchild of Parent Page 2 - B1 - One
+    Parent: =>SilverStripe\SearchService\Tests\Fake\PageFake.page10
+    Images: =>SilverStripe\SearchService\Tests\Fake\ImageFake.five
+    Tags: =>SilverStripe\SearchService\Tests\Fake\TagFake.four,=>SilverStripe\SearchService\Tests\Fake\TagFake.six
     ShowInSearch: 1

@@ -124,6 +124,8 @@ class Indexer
                 );
 
                 if ($dependentDocs) {
+                    // Indexer::METHOD_ADD as default parameter make sure we check first its related documents
+                    // and decide whether we should delete or update them automatically.
                     $child = Indexer::create($dependentDocs, self::METHOD_ADD, $this->getBatchSize());
 
                     while (!$child->finished()) {

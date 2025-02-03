@@ -1,0 +1,31 @@
+<?php
+
+namespace SilverStripe\SearchService\Tests\Fake;
+
+use Page;
+use SilverStripe\Dev\TestOnly;
+use SilverStripe\SearchService\Extensions\SearchServiceExtension;
+
+class PageFake extends Page implements TestOnly
+{
+
+    private static array $many_many = [
+        'Tags' => TagFake::class,
+    ];
+
+    private static array $has_many = [
+        'Images' => ImageFake::class,
+    ];
+
+    private static array $owns = [
+        'Tags',
+        'Images',
+    ];
+
+    private static string $table_name = 'PageFake';
+
+    private static array $extensions = [
+        SearchServiceExtension::class,
+    ];
+
+}
