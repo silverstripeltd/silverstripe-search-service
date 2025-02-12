@@ -16,9 +16,9 @@
     "require": {
         "php": "^8.0",
         "guzzlehttp/guzzle": "^7",
-        "symbiote/silverstripe-queuedjobs": "^4",
+        "symbiote/silverstripe-queuedjobs": "^5",
         "elastic/enterprise-search": "^8.3",
-        "silverstripe/versioned": "^1"
+        "silverstripe/versioned": "^2"
     },
     "require-dev": {
         "phpunit/phpunit": "^9.5",
@@ -35,7 +35,9 @@
     "config": {
         "allow-plugins": {
             "composer/installers": true,
-            "dealerdirect/phpcodesniffer-composer-installer": true
+            "dealerdirect/phpcodesniffer-composer-installer": true,
+            "php-http/discovery": true,
+            "silverstripe/vendor-plugin": true
         }
     }
 }

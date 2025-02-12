@@ -88,7 +88,7 @@ class DataObjectFetcher implements DocumentFetcherInterface
     {
         $list = DataList::create($this->dataObjectClass);
 
-        return $list->limit($limit, $offset);
+        return $list->limit($limit, (int)$offset);
     }
 
 }
