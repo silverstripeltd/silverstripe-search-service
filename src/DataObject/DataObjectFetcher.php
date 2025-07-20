@@ -14,6 +14,7 @@ use SilverStripe\SearchService\Service\DocumentFetchCreatorRegistry;
 use SilverStripe\SearchService\Service\IndexConfiguration;
 use SilverStripe\SearchService\Service\Traits\ConfigurationAware;
 
+#[\AllowDynamicProperties]
 class DataObjectFetcher implements DocumentFetcherInterface
 {
 
