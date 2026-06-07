@@ -5,11 +5,12 @@ namespace SilverStripe\SearchService\DataObject;
 use Exception;
 use InvalidArgumentException;
 use LogicException;
+use SilverStripe\Core\ArrayLib;
 use SilverStripe\Core\Config\Configurable;
 use SilverStripe\Core\Extensible;
 use SilverStripe\Core\Injector\Injectable;
 use SilverStripe\Core\Injector\Injector;
-use SilverStripe\ORM\ArrayLib;
+use SilverStripe\Model\ModelData;
 use SilverStripe\ORM\DataList;
 use SilverStripe\ORM\DataObject;
 use SilverStripe\ORM\DataObjectSchema;
@@ -37,7 +38,6 @@ use SilverStripe\SearchService\Service\Traits\ConfigurationAware;
 use SilverStripe\SearchService\Service\Traits\ServiceAware;
 use SilverStripe\Security\Member;
 use SilverStripe\Versioned\Versioned;
-use SilverStripe\View\ViewableData;
 
 class DataObjectDocument implements
     DocumentInterface,
@@ -260,6 +260,7 @@ class DataObjectDocument implements
             $dbField = $this->getFieldValue($field);
 
             if (!$dbField) {
+                $attributes[$field->getSearchFieldName()] = null;
                 continue;
             }
 
@@ -285,7 +286,7 @@ class DataObjectDocument implements
                 continue;
             }
 
-            if (!$dbField instanceof ViewableData) {
+            if (!$dbField instanceof ModelData) {
                 throw new IndexConfigurationException(sprintf(
                     'Field "%s" returns value that cannot be resolved',
                     $field->getSearchFieldName()
@@ -345,7 +346,7 @@ class DataObjectDocument implements
         return $fields;
     }
 
-    public function getFieldDependency(Field $field): ?ViewableData
+    public function getFieldDependency(Field $field): ?ModelData
     {
         $tuple = $this->getFieldTuple($field);
 
@@ -475,7 +476,10 @@ class DataObjectDocument implements
      */
     public function setDataObject(DataObject $dataObject): self
     {
-        if (!$dataObject->hasExtension(SearchServiceExtension::class)) {
+        if (
+            !$dataObject->hasExtension(SearchServiceExtension::class)
+            && !DataObject::has_extension($dataObject::class, SearchServiceExtension::class)
+        ) {
             throw new InvalidArgumentException(sprintf(
                 'DataObject %s does not have the %s extension',
                 $dataObject::class,
@@ -508,8 +512,16 @@ class DataObjectDocument implements
         $subject = $context ?: $this->getDataObject();
         $nextField = array_shift($path);
 
+        if ($nextField === null) {
+            return [$subject, $subject];
+        }
+
         if ($subject instanceof DataObject) {
-            $result = $subject->obj($nextField);
+            $result = $this->resolveField($nextField, $subject);
+
+            if (!$result) {
+                return null;
+            }
 
             if ($result instanceof DBField) {
                 $dependency = $subject === $this->getDataObject()
@@ -549,12 +561,12 @@ class DataObjectDocument implements
         ));
     }
 
-    private function resolveField(string $field): ?ViewableData
+    private function resolveField(string $field, ?DataObject $subject = null): ?ModelData
     {
-        $subject = $this->getDataObject();
+        $subject ??= $this->getDataObject();
         $result = $subject->obj($field);
 
-        if ($result && $result instanceof DBField) {
+        if ($result instanceof ModelData) {
             return $result;
         }
 
@@ -562,6 +574,12 @@ class DataObjectDocument implements
             array_keys(
                 DataObject::getSchema()
                     ->fieldSpecs($subject, DataObjectSchema::DB_ONLY)
+            ),
+            array_keys(
+                $subject->hasOne()
+            ),
+            array_keys(
+                $subject->belongsTo()
             ),
             array_keys(
                 $subject->hasMany()
@@ -578,7 +596,7 @@ class DataObjectDocument implements
         return $fieldName ? $subject->obj($fieldName) : null;
     }
 
-    private function getFieldTuple(Field $field): array
+    private function getFieldTuple(Field $field): ?array
     {
         if ($field->getProperty()) {
             $path = explode('.', $field->getProperty());

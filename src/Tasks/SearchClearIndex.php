@@ -3,9 +3,9 @@
 namespace SilverStripe\SearchService\Tasks;
 
 use InvalidArgumentException;
-use SilverStripe\Control\HTTPRequest;
 use SilverStripe\Core\Environment;
 use SilverStripe\Dev\BuildTask;
+use SilverStripe\PolyExecution\PolyOutput;
 use SilverStripe\SearchService\Interfaces\BatchDocumentInterface;
 use SilverStripe\SearchService\Interfaces\IndexingInterface;
 use SilverStripe\SearchService\Jobs\ClearIndexJob;
@@ -15,6 +15,9 @@ use SilverStripe\SearchService\Service\Traits\BatchProcessorAware;
 use SilverStripe\SearchService\Service\Traits\ConfigurationAware;
 use SilverStripe\SearchService\Service\Traits\ServiceAware;
 use Symbiote\QueuedJobs\Services\QueuedJobService;
+use Symfony\Component\Console\Command\Command;
+use Symfony\Component\Console\Input\InputInterface;
+use Symfony\Component\Console\Input\InputOption;
 
 class SearchClearIndex extends BuildTask
 {
@@ -23,11 +26,11 @@ class SearchClearIndex extends BuildTask
     use ConfigurationAware;
     use BatchProcessorAware;
 
-    protected $title = 'Search Service Clear Index'; // phpcs:ignore SlevomatCodingStandard.TypeHints
+    protected static string $commandName = 'SearchClearIndex';
 
-    protected $description = 'Search Service Clear Index'; // phpcs:ignore SlevomatCodingStandard.TypeHints
+    protected string $title = 'Search Service Clear Index';
 
-    private static $segment = 'SearchClearIndex'; // phpcs:ignore SlevomatCodingStandard.TypeHints
+    protected static string $description = 'Search Service Clear Index';
 
     private ?BatchDocumentInterface $batchProcessor = null;
 
@@ -43,15 +46,19 @@ class SearchClearIndex extends BuildTask
         $this->setBatchProcessor($batchProcessor);
     }
 
-    /**
-     * @param HTTPRequest $request
-     */
-    public function run($request): void // phpcs:ignore SlevomatCodingStandard.TypeHints
+    public function getOptions(): array
+    {
+        return [
+            new InputOption('index', null, InputOption::VALUE_OPTIONAL, 'The search index to clear'),
+        ];
+    }
+
+    protected function execute(InputInterface $input, PolyOutput $output): int
     {
         Environment::increaseMemoryLimitTo();
         Environment::increaseTimeLimitTo();
 
-        $targetIndex = $request->getVar('index');
+        $targetIndex = $input->getOption('index');
 
         if (!$targetIndex) {
             throw new InvalidArgumentException("Must specify an index in the 'index' parameter.");
@@ -64,6 +71,8 @@ class SearchClearIndex extends BuildTask
         } else {
             QueuedJobService::singleton()->queueJob($job);
         }
+
+        return Command::SUCCESS;
     }
 
 }

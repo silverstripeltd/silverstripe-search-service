@@ -75,4 +75,38 @@ class ReindexJobTest extends SearchServiceTest
         $this->assertEqualsCanonicalizing($expectedFetchers, $resultFetchers);
     }
 
+    public function testJobDataRoundTripRebuildsFetchers(): void
+    {
+        $config = $this->mockConfig();
+        $config->set('use_sync_jobs', [
+            DataObjectFake::class => true,
+            'Fake' => true,
+        ]);
+        $this->loadIndex(20);
+        $registry = DocumentFetchCreatorRegistry::singleton();
+        $registry->addFetchCreator(new FakeFetchCreator());
+
+        $job = ReindexJob::create([DataObjectFake::class, 'Fake'], [], 6);
+        $job->setup();
+
+        $savedData = $job->getJobData();
+
+        $this->assertFalse(property_exists($savedData->jobData, 'fetchers'));
+
+        $restoredJob = ReindexJob::create();
+        $restoredJob->setJobData(
+            $savedData->totalSteps,
+            $savedData->currentStep,
+            $savedData->isComplete,
+            unserialize(serialize($savedData->jobData)),
+            $savedData->messages
+        );
+        $restoredJob->prepareForRestart();
+
+        $fetchers = $restoredJob->getFetchers();
+        $this->assertCount(2, $fetchers);
+        $this->assertEquals(DataObjectFetcher::class, $fetchers[0]::class);
+        $this->assertEquals(FakeFetcher::class, $fetchers[1]::class);
+    }
+
 }

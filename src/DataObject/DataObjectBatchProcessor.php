@@ -3,8 +3,8 @@
 namespace SilverStripe\SearchService\DataObject;
 
 use SilverStripe\Core\Config\Configurable;
+use SilverStripe\Core\Validation\ValidationException;
 use SilverStripe\ORM\FieldType\DBDatetime;
-use SilverStripe\ORM\ValidationException;
 use SilverStripe\SearchService\Interfaces\DocumentInterface;
 use SilverStripe\SearchService\Jobs\IndexJob;
 use SilverStripe\SearchService\Jobs\RemoveDataObjectJob;

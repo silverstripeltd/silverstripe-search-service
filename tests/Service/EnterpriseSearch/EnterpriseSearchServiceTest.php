@@ -8,8 +8,8 @@ use GuzzleHttp\Client as GuzzleClient;
 use GuzzleHttp\Handler\MockHandler;
 use GuzzleHttp\HandlerStack;
 use GuzzleHttp\Psr7\Response;
-use Page;
 use ReflectionMethod;
+use SilverStripe\CMS\Model\SiteTree;
 use SilverStripe\Core\Environment;
 use SilverStripe\Core\Injector\Injector;
 use SilverStripe\SearchService\DataObject\DataObjectDocument;
@@ -34,6 +34,7 @@ class EnterpriseSearchServiceTest extends SearchServiceTest
      * @var array
      */
     protected static $extra_dataobjects = [
+        SiteTree::class,
         DataObjectFake::class,
         DataObjectFakePrivate::class,
         DataObjectFakeVersioned::class,
@@ -93,7 +94,7 @@ class EnterpriseSearchServiceTest extends SearchServiceTest
         $this->searchService->validateField($fieldName);
     }
 
-    public function provideFieldsForValidation(): array
+    public static function provideFieldsForValidation(): array
     {
         return [
             [
@@ -245,7 +246,7 @@ class EnterpriseSearchServiceTest extends SearchServiceTest
             [
                 'content' => [
                     'includeClasses' => [
-                        Page::class => [
+                        SiteTree::class => [
                             'fields' => [
                                 'title' => true,
                                 'html_text' => [
@@ -282,7 +283,7 @@ class EnterpriseSearchServiceTest extends SearchServiceTest
             [
                 'content' => [
                     'includeClasses' => [
-                        Page::class => [
+                        SiteTree::class => [
                             'fields' => [
                                 'fail_field' => [
                                     'property' => 'getDBHTMLText',
@@ -1606,7 +1607,7 @@ class EnterpriseSearchServiceTest extends SearchServiceTest
             [
                 'content' => [
                     'includeClasses' => [
-                        Page::class => [
+                        SiteTree::class => [
                             'fields' => [
                                 'title' => true,
                             ],

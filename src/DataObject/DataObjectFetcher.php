@@ -13,6 +13,7 @@ use SilverStripe\SearchService\Interfaces\DocumentInterface;
 use SilverStripe\SearchService\Service\DocumentFetchCreatorRegistry;
 use SilverStripe\SearchService\Service\IndexConfiguration;
 use SilverStripe\SearchService\Service\Traits\ConfigurationAware;
+use SilverStripe\SearchService\Service\Traits\RegistryAware;
 
 class DataObjectFetcher implements DocumentFetcherInterface
 {
@@ -21,6 +22,7 @@ class DataObjectFetcher implements DocumentFetcherInterface
     use Configurable;
     use Injectable;
     use ConfigurationAware;
+    use RegistryAware;
 
     private ?string $dataObjectClass = null;
 

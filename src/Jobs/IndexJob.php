@@ -54,7 +54,7 @@ class IndexJob extends AbstractQueuedJob implements QueuedJob
         } else {
             // There could be 0 documents. If that's the case, then there's zero steps
             $this->totalSteps = $this->getDocuments()
-                ? ceil(count($this->getDocuments()) / $this->getBatchSize())
+                ? (int) ceil(count($this->getDocuments()) / $this->getBatchSize())
                 : 0;
         }
 
@@ -73,7 +73,7 @@ class IndexJob extends AbstractQueuedJob implements QueuedJob
         );
     }
 
-    public function getJobType(): int
+    public function getJobType(): string
     {
         return QueuedJob::IMMEDIATE;
     }

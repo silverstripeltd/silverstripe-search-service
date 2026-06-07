@@ -14,7 +14,7 @@ use SilverStripe\Forms\GridField\GridFieldPaginator;
 use SilverStripe\Forms\HeaderField;
 use SilverStripe\Forms\LiteralField;
 use SilverStripe\Forms\NumericField;
-use SilverStripe\ORM\ArrayList;
+use SilverStripe\Model\List\ArrayList;
 use SilverStripe\ORM\DataQuery;
 use SilverStripe\SearchService\Exception\IndexingServiceException;
 use SilverStripe\SearchService\Extensions\SearchServiceExtension;
@@ -123,7 +123,7 @@ class SearchAdmin extends LeftAndMain implements PermissionProvider
 
             // Reindex all URL field
             if ($canReindex) {
-                $fullReindexBaseURL = Director::absoluteURL('/dev/tasks/' . SearchReindex::config()->get('segment'));
+                $fullReindexBaseURL = Director::absoluteURL('/dev/tasks/' . SearchReindex::getNameWithoutNamespace());
                 $fields[] = LiteralField::create(
                     'ReindexAllURL',
                     sprintf(

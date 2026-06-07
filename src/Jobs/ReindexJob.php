@@ -3,6 +3,7 @@
 namespace SilverStripe\SearchService\Jobs;
 
 use InvalidArgumentException;
+use RuntimeException;
 use SilverStripe\Core\Extensible;
 use SilverStripe\Core\Injector\Injectable;
 use SilverStripe\SearchService\Interfaces\DocumentFetcherInterface;
@@ -16,7 +17,6 @@ use Symbiote\QueuedJobs\Services\QueuedJob;
 
 /**
  * @property int|null $batchSize
- * @property DocumentFetcherInterface[]|null $fetchers
  * @property int|null $fetchIndex
  * @property int|null $fetchOffset
  * @property array|null $onlyClasses
@@ -33,6 +33,14 @@ class ReindexJob extends AbstractQueuedJob implements QueuedJob
         'Registry' => '%$' . DocumentFetchCreatorRegistry::class,
         'Configuration' => '%$' . IndexConfiguration::class,
     ];
+
+    /**
+     * Fetchers are rebuilt from persisted class filters on setup/restart so queued job state
+     * doesn't need to serialise service instances.
+     *
+     * @var DocumentFetcherInterface[]|null
+     */
+    private ?array $fetchers = null;
 
     private ?DocumentFetchCreatorRegistry $registry = null;
 
@@ -71,37 +79,18 @@ class ReindexJob extends AbstractQueuedJob implements QueuedJob
         return $title;
     }
 
-    public function getJobType(): int
+    public function getJobType(): string
     {
         return QueuedJob::QUEUED;
     }
 
     public function setup(): void
     {
-        Versioned::set_stage(Versioned::LIVE);
-
-        if ($this->getOnlyIndexes() && count($this->getOnlyIndexes())) {
-            $this->getConfiguration()->setOnlyIndexes($this->getOnlyIndexes());
-        }
-
-        $classes = $this->getOnlyClasses() && count($this->getOnlyClasses())
-            ? $this->getOnlyClasses()
-            : $this->getConfiguration()->getSearchableBaseClasses();
-
-        /** @var DocumentFetcherInterface[] $fetchers */
-        $fetchers = [];
-
-        foreach ($classes as $class) {
-            $fetcher = $this->getRegistry()->getFetcher($class);
-
-            if ($fetcher) {
-                $fetchers[$class] = $fetcher;
-            }
-        }
+        $fetchers = $this->resolveFetchers();
 
         $steps = array_reduce($fetchers, function ($total, $fetcher) {
             /** @var DocumentFetcherInterface $fetcher */
-            return $total + ceil($fetcher->getTotalDocuments() / $this->getBatchSize());
+            return $total + (int) ceil($fetcher->getTotalDocuments() / $this->getBatchSize());
         }, 0);
 
         $this->totalSteps = $steps;
@@ -110,6 +99,13 @@ class ReindexJob extends AbstractQueuedJob implements QueuedJob
         $this->setFetchers(array_values($fetchers));
         $this->setFetchIndex(0);
         $this->setFetchOffset(0);
+    }
+
+    public function prepareForRestart(): void
+    {
+        parent::prepareForRestart();
+
+        $this->setFetchers(array_values($this->resolveFetchers()));
     }
 
     /**
@@ -123,9 +119,10 @@ class ReindexJob extends AbstractQueuedJob implements QueuedJob
         $fetcher = $fetchers[$this->getFetchIndex()] ?? null;
 
         if (!$fetcher) {
-            $this->isComplete = true;
-
-            return;
+            throw new RuntimeException(sprintf(
+                'Unable to resolve fetcher at index %d for reindex job',
+                (int) $this->getFetchIndex()
+            ));
         }
 
         $documents = $fetcher->fetch($this->getBatchSize(), $this->getFetchOffset());
@@ -160,10 +157,10 @@ class ReindexJob extends AbstractQueuedJob implements QueuedJob
         return $this->batchSize;
     }
 
-    public function getFetchers(): ?array
+    public function getFetchers(): array
     {
-        if (is_bool($this->fetchers)) {
-            return null;
+        if ($this->fetchers === null) {
+            $this->setFetchers(array_values($this->resolveFetchers()));
         }
 
         return $this->fetchers;
@@ -250,6 +247,35 @@ class ReindexJob extends AbstractQueuedJob implements QueuedJob
         $this->registry = $registry;
 
         return $this;
+    }
+
+    /**
+     * @return DocumentFetcherInterface[]
+     */
+    private function resolveFetchers(): array
+    {
+        Versioned::set_stage(Versioned::LIVE);
+
+        if ($this->getOnlyIndexes() && count($this->getOnlyIndexes())) {
+            $this->getConfiguration()->setOnlyIndexes($this->getOnlyIndexes());
+        }
+
+        $classes = $this->getOnlyClasses() && count($this->getOnlyClasses())
+            ? $this->getOnlyClasses()
+            : $this->getConfiguration()->getSearchableBaseClasses();
+
+        /** @var DocumentFetcherInterface[] $fetchers */
+        $fetchers = [];
+
+        foreach ($classes as $class) {
+            $fetcher = $this->getRegistry()->getFetcher($class);
+
+            if ($fetcher) {
+                $fetchers[$class] = $fetcher;
+            }
+        }
+
+        return $fetchers;
     }
 
 }

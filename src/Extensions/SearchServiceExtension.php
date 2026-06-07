@@ -3,11 +3,12 @@
 namespace SilverStripe\SearchService\Extensions;
 
 use Exception;
+use SilverStripe\Control\Director;
 use SilverStripe\Core\Config\Configurable;
+use SilverStripe\Core\Extension;
 use SilverStripe\Core\Injector\Injectable;
 use SilverStripe\Forms\FieldList;
 use SilverStripe\Forms\ReadonlyField;
-use SilverStripe\ORM\DataExtension;
 use SilverStripe\ORM\DataObject;
 use SilverStripe\SearchService\DataObject\DataObjectBatchProcessor;
 use SilverStripe\SearchService\DataObject\DataObjectDocument;
@@ -26,7 +27,7 @@ use Throwable;
  * @property DataObject|SearchServiceExtension $owner
  * @property string $SearchIndexed
  */
-class SearchServiceExtension extends DataExtension
+class SearchServiceExtension extends Extension
 {
 
     use Configurable;
@@ -39,7 +40,14 @@ class SearchServiceExtension extends DataExtension
         'SearchIndexed' => 'Datetime',
     ];
 
+    private static bool $force_lifecycle_indexing = false;
+
     private bool $hasConfigured = false;
+
+    public static function shouldRunLifecycleIndexing(): bool
+    {
+        return !Director::is_cli() || (bool) static::config()->get('force_lifecycle_indexing');
+    }
 
     public function __construct(
         IndexingInterface $searchService,
@@ -92,6 +100,10 @@ class SearchServiceExtension extends DataExtension
      */
     public function addToIndexes(): void
     {
+        if (!self::shouldRunLifecycleIndexing()) {
+            return;
+        }
+
         $document = DataObjectDocument::create($this->owner);
         $this->getBatchProcessor()->addDocuments([$document]);
     }
@@ -101,6 +113,10 @@ class SearchServiceExtension extends DataExtension
      */
     public function removeFromIndexes(): void
     {
+        if (!self::shouldRunLifecycleIndexing()) {
+            return;
+        }
+
         $document = DataObjectDocument::create($this->owner)->setShouldFallbackToLatestVersion();
         $this->getBatchProcessor()->removeDocuments([$document]);
     }

@@ -4,7 +4,7 @@ namespace SilverStripe\SearchService\Service;
 
 use Exception;
 use SilverStripe\Core\Injector\Injectable;
-use SilverStripe\ORM\ValidationException;
+use SilverStripe\Core\Validation\ValidationException;
 use SilverStripe\SearchService\Interfaces\BatchDocumentInterface;
 use SilverStripe\SearchService\Interfaces\DocumentInterface;
 use SilverStripe\SearchService\Jobs\IndexJob;

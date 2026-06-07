@@ -1,21 +1,21 @@
-Page:
+SilverStripe\CMS\Model\SiteTree:
   page1:
     Title: Parent Page
     ShowInSearch: 1
   page2:
     Title: Child Page 1
-    Parent: =>Page.page1
+    Parent: =>SilverStripe\CMS\Model\SiteTree.page1
     ShowInSearch: 1
   page3:
     Title: Child Page 2
-    Parent: =>Page.page1
+    Parent: =>SilverStripe\CMS\Model\SiteTree.page1
     ShowInSearch: 1
   page4:
     Title: Parent Page 2
     ShowInSearch: 1
   page5:
     Title: Child Page 3
-    Parent: =>Page.page4
+    Parent: =>SilverStripe\CMS\Model\SiteTree.page4
     ShowInSearch: 1
   page6:
     Title: Subsite Page 1

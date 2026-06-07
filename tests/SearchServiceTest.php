@@ -8,12 +8,42 @@ use SilverStripe\SearchService\DataObject\DataObjectDocument;
 use SilverStripe\SearchService\Extensions\SearchServiceExtension;
 use SilverStripe\SearchService\Interfaces\IndexingInterface;
 use SilverStripe\SearchService\Service\IndexConfiguration;
+use SilverStripe\SearchService\Tests\Fake\DataObjectFakeAlternate;
 use SilverStripe\SearchService\Tests\Fake\DataObjectFake;
+use SilverStripe\SearchService\Tests\Fake\DataObjectFakePrivate;
+use SilverStripe\SearchService\Tests\Fake\DataObjectFakeVersioned;
+use SilverStripe\SearchService\Tests\Fake\DataObjectSubclassFake;
+use SilverStripe\SearchService\Tests\Fake\ImageFake;
 use SilverStripe\SearchService\Tests\Fake\IndexConfigurationFake;
 use SilverStripe\SearchService\Tests\Fake\ServiceFake;
+use SilverStripe\SearchService\Tests\Fake\TagFake;
 
 abstract class SearchServiceTest extends SapphireTest
 {
+
+    protected static $required_extensions = [
+        DataObjectFake::class => [
+            SearchServiceExtension::class,
+        ],
+        DataObjectFakeAlternate::class => [
+            SearchServiceExtension::class,
+        ],
+        DataObjectFakePrivate::class => [
+            SearchServiceExtension::class,
+        ],
+        DataObjectFakeVersioned::class => [
+            SearchServiceExtension::class,
+        ],
+        DataObjectSubclassFake::class => [
+            SearchServiceExtension::class,
+        ],
+        ImageFake::class => [
+            SearchServiceExtension::class,
+        ],
+        TagFake::class => [
+            SearchServiceExtension::class,
+        ],
+    ];
 
     protected function mockConfig(): IndexConfigurationFake
     {

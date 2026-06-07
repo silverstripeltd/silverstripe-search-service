@@ -12,7 +12,7 @@ class ClientFactory implements Factory
     /**
      * @throws Exception
      */
-    public function create($service, array $params = []) // phpcs:ignore SlevomatCodingStandard.TypeHints
+    public function create(string $service, array $params = []): ?object
     {
         $host = $params['host'] ?? null;
         $token = $params['token'] ?? null;

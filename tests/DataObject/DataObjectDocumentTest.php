@@ -2,7 +2,7 @@
 
 namespace SilverStripe\SearchService\Tests\DataObject;
 
-use Page;
+use SilverStripe\CMS\Model\SiteTree;
 use SilverStripe\ORM\DataObject;
 use SilverStripe\ORM\FieldType\DBDatetime;
 use SilverStripe\ORM\RelationList;
@@ -38,6 +38,7 @@ class DataObjectDocumentTest extends SearchServiceTest
      * @var array
      */
     protected static $extra_dataobjects = [
+        SiteTree::class,
         DataObjectFake::class,
         TagFake::class,
         ImageFake::class,
@@ -118,21 +119,21 @@ class DataObjectDocumentTest extends SearchServiceTest
     {
         $config = $this->mockConfig();
 
-        $parent = $this->objFromFixture(Page::class, 'page1');
+        $parent = $this->objFromFixture(SiteTree::class, 'page1');
         // Make sure our Parent is published before we fetch our child pages
         $parent->publishRecursive();
 
-        $childOne = $this->objFromFixture(Page::class, 'page2');
-        $childTwo = $this->objFromFixture(Page::class, 'page3');
-        $childThree = $this->objFromFixture(Page::class, 'page5');
+        $childOne = $this->objFromFixture(SiteTree::class, 'page2');
+        $childTwo = $this->objFromFixture(SiteTree::class, 'page3');
+        $childThree = $this->objFromFixture(SiteTree::class, 'page5');
 
         // Publish childOne and childThree
         $childOne->publishRecursive();
         $childThree->publishRecursive();
         // Need to re-fetch childOne and childThree so that our Versioned state is up-to-date with what we just
         // published
-        $childOne = $this->objFromFixture(Page::class, 'page2');
-        $childThree = $this->objFromFixture(Page::class, 'page5');
+        $childOne = $this->objFromFixture(SiteTree::class, 'page2');
+        $childThree = $this->objFromFixture(SiteTree::class, 'page5');
 
         // $docOne has a published page
         $docOne = DataObjectDocument::create($childOne);
@@ -169,7 +170,7 @@ class DataObjectDocumentTest extends SearchServiceTest
         $parent->write();
 
         // Need to re-fetch childOne so that we re-fetch the Parent when we request canView()
-        $childOne = $this->objFromFixture(Page::class, 'page2');
+        $childOne = $this->objFromFixture(SiteTree::class, 'page2');
         // Recreate the Document with our new child page
         $docOne = DataObjectDocument::create($childOne);
         // Check that our child page is still indexable, even after our parent page was given a different draft version
@@ -192,13 +193,13 @@ class DataObjectDocumentTest extends SearchServiceTest
                 'index0' => [
                     'subsite_id' => 0,
                     'includeClasses' => [
-                        Page::class => true,
+                        SiteTree::class => true,
                     ],
                 ],
                 'index1' => [
                     'subsite_id' => $subsite2->ID,
                     'includeClasses' => [
-                        Page::class => true,
+                        SiteTree::class => true,
                         DataObjectFake::class => true,
                         DataObjectFakeVersioned::class => true,
                     ],
@@ -213,9 +214,9 @@ class DataObjectDocumentTest extends SearchServiceTest
         );
 
         // Ensure page that belongs to a subsite is published
-        $page = $this->objFromFixture(Page::class, 'page6');
-        $page->publishRecursive();
-        $page = $this->objFromFixture(Page::class, 'page6');
+        $page = $this->objFromFixture(SiteTree::class, 'page6');
+        $page->publishSingle();
+        $page = $this->objFromFixture(SiteTree::class, 'page6');
 
         // Prepare page for index
         $docOne = DataObjectDocument::create($page);
@@ -224,20 +225,20 @@ class DataObjectDocumentTest extends SearchServiceTest
         $this->assertFalse($docOne->shouldIndex());
 
         // Remove the subsite ID
-        $page->update(['SubsiteID' => null])->publishRecursive();
-        $page = $this->objFromFixture(Page::class, 'page6');
+        $page->update(['SubsiteID' => null])->publishSingle();
+        $page = $this->objFromFixture(SiteTree::class, 'page6');
 
         // Prepare page for reindex
         $doc2 = DataObjectDocument::create($page);
 
         // Assert that the subsite ID removed from the page can be indexed because we explicitly defined the ClassName
         // in index0 configuration
-        $this->assertNull($page->SubsiteID);
+        $this->assertEmpty($page->SubsiteID);
         $this->assertTrue($doc2->shouldIndex());
 
         // Update page subsite ID with correct ID
-        $page->update(['SubsiteID' => $subsite2->ID])->publishRecursive();
-        $page = $this->objFromFixture(Page::class, 'page6');
+        $page->update(['SubsiteID' => $subsite2->ID])->publishSingle();
+        $page = $this->objFromFixture(SiteTree::class, 'page6');
 
         // Prepare page for reindex
         $doc3 = DataObjectDocument::create($page);
