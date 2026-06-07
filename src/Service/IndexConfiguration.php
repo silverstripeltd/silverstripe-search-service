@@ -6,8 +6,10 @@ use SilverStripe\Core\Config\Configurable;
 use SilverStripe\Core\Environment;
 use SilverStripe\Core\Extensible;
 use SilverStripe\Core\Injector\Injectable;
+use SilverStripe\Model\ModelData;
 use SilverStripe\SearchService\Interfaces\DocumentInterface;
 use SilverStripe\SearchService\Schema\Field;
+use SilverStripe\View\ViewableData;
 
 class IndexConfiguration
 {
@@ -147,7 +149,7 @@ class IndexConfiguration
                         continue;
                     }
 
-                    if ($class === $candidate || is_subclass_of($class, $candidate)) {
+                    if ($this->classMatches($class, $candidate)) {
                         $matches[$indexName] = $data;
 
                         break;
@@ -215,7 +217,7 @@ class IndexConfiguration
 
         foreach ($classes as $class) {
             $baseClasses = array_filter($baseClasses, function ($possibleParent) use ($class) {
-                return !is_subclass_of($possibleParent, $class);
+                return $possibleParent === $class || !$this->classMatches($possibleParent, $class);
             });
         }
 
@@ -227,10 +229,9 @@ class IndexConfiguration
      */
     public function getFieldsForClass(string $class): ?array
     {
-        $candidate = $class;
         $fieldObjs = [];
 
-        while ($candidate) {
+        foreach ($this->getClassLineage($class) as $candidate) {
             foreach ($this->getIndexes() as $config) {
                 $includedClasses = $config['includeClasses'] ?? [];
                 $spec = $includedClasses[$candidate] ?? null;
@@ -254,8 +255,6 @@ class IndexConfiguration
                     );
                 }
             }
-
-            $candidate = get_parent_class($candidate);
         }
 
         return $fieldObjs;
@@ -293,6 +292,42 @@ class IndexConfiguration
         }
 
         return $configuration;
+    }
+
+    private function classMatches(string $class, string $candidate): bool
+    {
+        if ($class === $candidate) {
+            return true;
+        }
+
+        if (class_exists($class) && class_exists($candidate) && is_subclass_of($class, $candidate)) {
+            return true;
+        }
+
+        return $candidate === ViewableData::class
+            && class_exists($class)
+            && is_a($class, ModelData::class, true);
+    }
+
+    /**
+     * @return string[]
+     */
+    private function getClassLineage(string $class): array
+    {
+        if (!class_exists($class)) {
+            return [$class];
+        }
+
+        $lineage = array_merge([$class], array_values(class_parents($class) ?: []));
+
+        if (
+            is_a($class, ModelData::class, true)
+            && !in_array(ViewableData::class, $lineage, true)
+        ) {
+            $lineage[] = ViewableData::class;
+        }
+
+        return $lineage;
     }
 
 }

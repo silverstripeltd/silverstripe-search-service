@@ -4,6 +4,8 @@ namespace SilverStripe\SearchService\Tests;
 
 use SilverStripe\Core\Injector\Injector;
 use SilverStripe\Dev\SapphireTest;
+use SilverStripe\Dev\BuildTask;
+use SilverStripe\PolyExecution\PolyOutput;
 use SilverStripe\SearchService\DataObject\DataObjectDocument;
 use SilverStripe\SearchService\Extensions\SearchServiceExtension;
 use SilverStripe\SearchService\Interfaces\IndexingInterface;
@@ -17,6 +19,9 @@ use SilverStripe\SearchService\Tests\Fake\ImageFake;
 use SilverStripe\SearchService\Tests\Fake\IndexConfigurationFake;
 use SilverStripe\SearchService\Tests\Fake\ServiceFake;
 use SilverStripe\SearchService\Tests\Fake\TagFake;
+use Symfony\Component\Console\Input\ArrayInput;
+use Symfony\Component\Console\Input\InputDefinition;
+use Symfony\Component\Console\Output\BufferedOutput;
 
 abstract class SearchServiceTest extends SapphireTest
 {
@@ -76,6 +81,22 @@ abstract class SearchServiceTest extends SapphireTest
         }
 
         return $service;
+    }
+
+    protected function runTask(BuildTask $task, array $options = []): string
+    {
+        $arguments = [];
+        foreach ($options as $name => $value) {
+            $arguments["--{$name}"] = $value;
+        }
+        $input = new ArrayInput(
+            $arguments,
+            new InputDefinition($task->getOptions())
+        );
+        $buffer = new BufferedOutput();
+        $task->run($input, new PolyOutput(PolyOutput::FORMAT_ANSI, wrappedOutput: $buffer));
+
+        return $buffer->fetch();
     }
 
 }
